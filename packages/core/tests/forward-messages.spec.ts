@@ -1,6 +1,6 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
-import InteractionsExtension from "../lib/services/extension/builtin/interactions";
+import InteractionsExtension from "../src/services/extension/builtin/interactions";
 import { Services } from "../src/shared/constants";
 import { formatDate } from "../src/shared/utils/toolkit";
 
