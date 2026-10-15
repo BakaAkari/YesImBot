@@ -1,5 +1,6 @@
 import { Argv, Context, h } from "koishi";
 
+import type { ContextBudgetReport } from "../agent/context-budget";
 import { getContextSnapshots } from "../model/context-snapshot";
 import { estimateTokens, getUsageLedger, TokenUsage, UsageRecord } from "../model/usage";
 import { TableName } from "../shared/constants";
@@ -18,6 +19,7 @@ export interface InspectionOptions {
     full: boolean;
     details: boolean;
     reset: boolean;
+    traceId?: string;
 }
 
 /** Koishi keeps only the final occurrence of ordinary options; read its preserved source. */
@@ -44,15 +46,24 @@ export function parseInspectionOptions(source: string, fallback: Record<string, 
             result[name === "restart" ? "reset" : name] = true;
             continue;
         }
-        if (name !== "page" && !isDimension(name)) throw new Error(`未知参数 --${name}`);
-        const next = inline.length ? inline.join("=") : tokens[++i]?.content;
-        if (!next || next.startsWith("--")) throw new Error(`--${name} 缺少参数`);
-        if (name === "page") {
+        if (name !== "page" && name !== "trace" && !isDimension(name)) throw new Error(`未知参数 --${name}`);
+        const valueToken = inline.length ? undefined : tokens[++i];
+        const next = inline.length ? inline.join("=") : valueToken?.content;
+        if (!next || (!inline.length && !valueToken?.quoted && next.startsWith("-")))
+            throw new Error(`--${name} 缺少参数；请填写筛选值。查看帮助请单独执行 history.context -h 或 history.tokens -h。`);
+        if (name === "trace") result.traceId = next;
+        else if (name === "page") {
             explicitPage = true;
             result.page = Number(next);
             if (!Number.isSafeInteger(result.page) || result.page < 1) throw new Error("页码必须为正整数");
         } else result[name].push(next);
     }
+    result.traceId ??= fallback.trace;
+    if (
+        result.traceId !== undefined &&
+        (typeof result.traceId !== "string" || !result.traceId.length || result.traceId.length > 512 || /\p{Cc}/u.test(result.traceId))
+    )
+        throw new Error("trace ID 应为 1 到 512 字符，且不能包含控制字符。");
     for (const name of dimensions) {
         if (!result[name].length && fallback[name] !== undefined) result[name] = Array.isArray(fallback[name]) ? fallback[name] : [fallback[name]];
         result[name] = [...new Set(result[name])].sort();
@@ -64,7 +75,7 @@ export function parseInspectionOptions(source: string, fallback: Record<string, 
         result.page = Number(fallback.page);
     }
     if (!Number.isSafeInteger(result.page) || result.page < 1) throw new Error("页码必须为正整数");
-    if (result.reset && (dimensions.some((name) => result[name].length) || explicitPage || result.full || result.details)) {
+    if (result.reset && (dimensions.some((name) => result[name].length) || explicitPage || result.full || result.details || result.traceId !== undefined)) {
         throw new Error("重置仅作用于整个实例，不能与筛选、分页或展示参数混用");
     }
     return result;
@@ -231,8 +242,8 @@ async function contextLines(ctx: Context, options: InspectionOptions): Promise<s
         "本地历史按平台/目标共享保存，旧记录没有机器人或实例标识。这里只显示当前实例可见目标。",
         "存储容量为文本估算，不等于实际请求长度；图片、嵌入向量不计入文本容量。",
     ];
-    if (options.provider.length || options.model.length || options.bot.length)
-        lines.push("服务商、模型、机器人筛选仅作用于实际请求快照；共享存储不归属某一模型或机器人。");
+    if (options.provider.length || options.model.length || options.bot.length || options.traceId !== undefined)
+        lines.push("服务商、模型、机器人、trace 筛选仅作用于实际请求快照；共享存储不归属某一模型或机器人。");
     else {
         let storedTokens = 0;
         let unknownText = 0;
@@ -318,7 +329,7 @@ async function contextLines(ctx: Context, options: InspectionOptions): Promise<s
         else storedTokens += memoryTokens;
         lines.unshift(`【本地保存容量】已知文本合计 ≈${(storedTokens / 1000).toFixed(2)}K · 无法估算 ${unknownText} 项`);
     }
-    const snapshots = getContextSnapshots(ctx).filter((row) =>
+    const snapshots = getContextSnapshots(ctx, options.traceId).filter((row) =>
         matchesUsage({ platform: row.adapter, botId: row.bot, target: row.target, provider: row.provider, model: row.model } as any, options),
     );
     if (options.full) {
@@ -345,10 +356,17 @@ async function contextLines(ctx: Context, options: InspectionOptions): Promise<s
             `${new Date(row.timestamp).toISOString()} ${row.adapter || "实例后台"}/${row.bot || "无机器人"}/${row.target || "无目标"} [${row.provider}][${row.model}] ${row.purpose || "请求"}`,
             `输入文本 ${row.inputTokens === undefined ? "未知" : `≈${(row.inputTokens / 1000).toFixed(2)}K`}`,
         );
+        if (row.traceId) lines.push(`Trace ID：${row.traceId}`);
         const capacity = ctx.yesimbot?.model?.peekContextLimit(row.provider, row.model);
         if (capacity)
             lines.push(
                 `最大上下文：${capacity.tokens === undefined ? "未知" : `${capacity.tokens / 1000}K`} · ${capacity.mode} · ${capacity.source || capacity.reason || capacity.status}${capacity.checkedAt ? ` · ${new Date(capacity.checkedAt).toISOString()}` : ""}`,
+            );
+        const budget = (row as typeof row & { contextBudget?: ContextBudgetReport }).contextBudget;
+        if (budget)
+            lines.push(
+                `预算估算：输入 ≈${budget.originalInputTokens} → ≈${budget.inputTokens} token · 输出预留 ${budget.reservedOutputTokens} · 移除 ${budget.droppedMessages} 条`,
+                `预算原因：${budget.reason}${budget.multimodal ? "；多模态使用固定额度估算，不代表服务商实际用量" : ""}`,
             );
         if (row.unavailable) lines.push(`完整内容不可用：${row.unavailable}`);
         else if (options.details) lines.push(row.content || "无内容");
@@ -360,13 +378,27 @@ export function registerHistoryInspection(ctx: Context, historyCmd: any): void {
     const cache = new InspectionPages();
     for (const kind of ["tokens", "context"] as const) {
         const command = historyCmd.subcommand(`.${kind}`, kind === "tokens" ? "查询实例用量统计" : "只读查看实例上下文", { authority: 3 });
-        for (const name of dimensions) command.option(name, `--${name} <value:string> 筛选${name}（可重复）`);
+        const labels: Record<Dimension, string> = {
+            adapter: "平台名，例如 onebot（不含群号）",
+            bot: "机器人账号 ID",
+            provider: "配置中的提供商名称",
+            model: "模型 ID",
+            target: "频道 ID 或 平台:频道ID，例如 onebot:857518324",
+        };
+        command.usage?.(
+            `范围：默认查询整个插件实例，非仅当前群。筛选可重复，同类取任一值，不同类同时满足。\n参数：--adapter 是平台名；群号请用 --target。\n注意：选项后必须填写值；-h 单独使用。${kind === "tokens" ? "\n筛选作用于用量记录；--reset 会清空整个实例统计，不能与筛选组合，不清历史。" : "\n提供商、模型、机器人筛选只作用于请求快照，不用于划分共享存储。--details 可能将完整内容发到聊天窗口。"}`,
+        );
+        command.example?.(`history.${kind} --adapter onebot --target onebot:857518324`);
+        command.example?.(`history.${kind} --provider "我的提供商" --model "模型ID" --full`);
+        command.example?.(`history.${kind} -h`);
+        for (const name of dimensions) command.option(name, `--${name} <value:string> ${labels[name]}（可重复）`);
         command.option("page", "--page <page:posint> 页码").option("full", "--full 按类别展开");
         if (kind === "tokens") command.option("reset", "--reset 重置整个实例统计").option("restart", "--restart 重置整个实例统计");
-        else command.option("details", "--details 展示完整存储内容和请求快照");
+        else command.option("details", "--details 展示完整存储内容和请求快照").option("trace", "--trace <id:string> 精确筛选决策/回复轮 ID");
         command.action(async (argv: any) => {
             try {
                 const options = parseInspectionOptions(argv.source || argv.session?.argv?.source || "", argv.options || {});
+                if (kind !== "context" && options.traceId !== undefined) return "仅 history.context 支持 --trace；用量聚合不按 trace 拆分。";
                 const ledger = getUsageLedger(ctx);
                 if (options.reset) {
                     if (kind !== "tokens") return "仅 history.tokens 支持重置。";
@@ -379,10 +411,10 @@ export function registerHistoryInspection(ctx: Context, historyCmd: any): void {
                 const filter = JSON.stringify({ ...options, page: undefined });
                 const key = JSON.stringify([kind, argv.session.platform, argv.session.userId, filter]);
                 const fullScope =
-                    dimensions
-                        .filter((name) => options[name].length)
-                        .map((name) => `${name}=${options[name].join(" | ")}`)
-                        .join("；") || "整个插件实例";
+                    [
+                        ...dimensions.filter((name) => options[name].length).map((name) => `${name}=${options[name].join(" | ")}`),
+                        ...(options.traceId === undefined ? [] : [`trace=${options.traceId}`]),
+                    ].join("；") || "整个插件实例";
                 let lines = options.page > 1 ? cache.get(key, snapshot.period) : undefined;
                 if (options.page > 1 && !lines) return "查询快照已过期或不存在，请以相同条件重新查询第 1 页。";
                 if (!lines) {
@@ -410,6 +442,8 @@ export function registerHistoryInspection(ctx: Context, historyCmd: any): void {
                     `统计起点：${new Date(snapshot.startedAt).toISOString()} · 周期 ${snapshot.period}`,
                     `第 ${options.page}/${pages.length} 页 · 1K=1000 token`,
                 ];
+                if (options.adapter.some((value) => value.includes(":")))
+                    header.push("筛选提示：如要查询 onebot 的某个群，请使用 --adapter onebot --target onebot:群号；--adapter 通常只填写平台名。");
                 if (kind === "tokens" && options.page > 1) header.push("范围总量（查询快照）：", ...lines.slice(0, 3));
                 return h
                     .text(

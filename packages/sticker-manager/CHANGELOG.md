@@ -8,12 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+
 - injects the consolidated `yesimbot` core service and reads `ctx.yesimbot`; the old per-service registrations are gone, so this version pairs with the matching `koishi-plugin-yesimbot` release.
 - each plugin instance owns its own service instead of sharing a process-wide singleton. (#231)
-- injects the consolidated `yesimbot` core service and reads `ctx.yesimbot`; the old per-service registrations are gone, so this version pairs with the matching `koishi-plugin-yesimbot` release
 
 ### Fixed
+
 - prompt snippets and pending startup work are released when the plugin is disposed. (#231)
+
 ## [1.2.1] - 2025-09-15
 
 ### Changed

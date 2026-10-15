@@ -8,11 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+
 - injects the consolidated `yesimbot` core service and reads `ctx.yesimbot`; the old per-service registrations are gone, so this version pairs with the matching `koishi-plugin-yesimbot` release.
-- injects the consolidated `yesimbot` core service and reads `ctx.yesimbot`; the old per-service registrations are gone, so this version pairs with the matching `koishi-plugin-yesimbot` release
 
 ### Fixed
+
 - schedule generation stops on dispose, prompt injections and snippets are unregistered, per-day generation is deduplicated, and dates are formatted in local time. (#231)
+
 ## [0.1.1] - 2025-09-15
 
 ### Changed

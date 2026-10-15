@@ -186,6 +186,7 @@ export class ContextBuilder {
                 participantIds: chunk.participantIds,
                 content: chunk.content,
                 relevance: chunk.similarity,
+                retrievalMethod: chunk.retrievalMethod,
                 timestamp: chunk.startTimestamp,
             }));
         } catch (error) {

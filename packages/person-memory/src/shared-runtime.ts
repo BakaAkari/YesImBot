@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { Context, Schema, h, type Session } from "koishi";
 
+import { describePeopleCommand } from "./command-help";
 import { escapeContext } from "./context";
 import { ContinuityStore, registerContinuityModels, sourceRef, summaryUnsafeIn, type RecallTarget } from "./continuity";
 import type { Config, Dependencies } from "./index";
@@ -599,7 +600,7 @@ export function applySharedMemory(ctx: Context, config: Config) {
         description: string,
         fn: (session: Session, writing: PersonStore, scope: string, args: any[], options?: any) => Promise<unknown>,
     ) {
-        const cmd = ctx.command(declaration, description, { authority: 3 });
+        const cmd = describePeopleCommand(ctx.command(declaration, description, { authority: 3 }), declaration, true);
         if (declaration.startsWith("people.history"))
             cmd.option("page", "--page <page:natural>", { fallback: 1 })
                 .option("account", "--account <account:string>")
@@ -614,7 +615,7 @@ export function applySharedMemory(ctx: Context, config: Config) {
                 const scope = scopeOf(session),
                     result = await fn(session, writingStore(session), scope, args, options);
                 await modeOf(scope);
-                const output = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+                const output = typeof result === "string" ? result : (JSON.stringify(result, null, 2) ?? "操作未返回结果，请执行 people.status 检查状态。");
                 return h.escape(output.slice(0, 12000));
             } catch (error) {
                 await event(session, details(session, actor, declaration.split(" ")[0], "failed", { error: String(error).slice(0, 300) }));
@@ -635,7 +636,10 @@ export function applySharedMemory(ctx: Context, config: Config) {
     );
     command("people.show <ref:string>", "查看人物画像、版本与账号关联", async (s, _w, scope, [ref]) => {
         const found = await store.find(scope, refOf(s, ref));
-        if (!found) throw new Error("共同域查无此人");
+        if (!found)
+            throw new Error(
+                "共同域查无此账号 ID 或人物 UUID；不支持用昵称查询。先执行 people.list 获取编号，例如 people.show 123456；详细说明见 people.show -h。",
+            );
         return `画像版本 ${found.person.revision}\n${JSON.stringify(found, null, 2)}`;
     });
     command("people.create <name:text>", "建立共同人物档案", async (s, w, scope, [name]) => w.create(scope, name, actor(s)));
@@ -647,12 +651,6 @@ export function applySharedMemory(ctx: Context, config: Config) {
     command("people.bind <account:string> <target:string> [confidence:number]", "纠正账号归属", async (s, w, scope, [account, target, confidence = 1]) =>
         w.bind(scope, refOf(s, account), refOf(s, target), confidence, actor(s)),
     );
-    command("people.unbind <account:string>", "解除旧关联，建立独立临时档案", async (s, w, scope, [account]) => {
-        const ref = refOf(s, account),
-            found = await store.find(scope, ref);
-        if (!found) throw new Error("共同域查无此账号");
-        return w.split(scope, ref, found.accounts.find((a) => a.userId === ref)?.name || account, actor(s));
-    });
     command("people.split <account:string> <name:text>", "拆分认错的账号", async (s, w, scope, [account, name]) =>
         w.split(scope, refOf(s, account), name, actor(s)),
     );

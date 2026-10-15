@@ -8,12 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+
 - injects the consolidated `yesimbot` core service and reads `ctx.yesimbot`; the old per-service registrations are gone, so this version pairs with the matching `koishi-plugin-yesimbot` release.
-- injects the consolidated `yesimbot` core service and reads `ctx.yesimbot`; the old per-service registrations are gone, so this version pairs with the matching `koishi-plugin-yesimbot` release
 
 ### Fixed
+
 - MCP tool calls enforce deadlines and release their resources when the plugin unloads. (#230)
 - the MCP command conversion switch is inherited correctly. (#213)
+
 ## [1.1.2] - 2025-09-15
 
 ### Changed

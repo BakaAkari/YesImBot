@@ -8,15 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - multilingual configuration and localization for synthesized output.
-- multilingual configuration and localization for synthesized output
 
 ### Changed
+
 - injects the consolidated `yesimbot` core service and reads `ctx.yesimbot`; the old per-service registrations are gone, so this version pairs with the matching `koishi-plugin-yesimbot` release.
-- injects the consolidated `yesimbot` core service and reads `ctx.yesimbot`; the old per-service registrations are gone, so this version pairs with the matching `koishi-plugin-yesimbot` release
 
 ### Fixed
+
 - synthesis is serialized and in-flight tasks settle when the plugin unloads. (#229)
+
 ## [0.2.2] - 2025-09-16
 
 ### Changed

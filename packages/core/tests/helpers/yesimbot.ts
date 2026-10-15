@@ -38,7 +38,7 @@ export function stubYesImBot(members: Partial<YesImBotFacade> = {}): YesImBotFac
         asset: {},
         prompt: {},
         memory: {},
-        model: {},
+        model: { peekContextLimit: () => undefined },
         world: {},
         tool: {},
         agent: {},

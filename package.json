@@ -15,16 +15,17 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "yakumo build",
+    "build": "yakumo build && node scripts/finalize-core-entry.js",
     "clean": "yakumo clean",
     "collect-packages": "node scripts/collect-packages.js",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
-    "pack": "yarn workspaces foreach -A --no-private exec npm pack",
+    "pack:all": "yarn workspaces foreach -A --no-private exec npm pack",
     "prepare": "husky",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify-packages": "node scripts/verify-packages.js"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",

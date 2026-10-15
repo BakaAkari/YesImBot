@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { Context, ForkScope, h, Logger, resolveConfig, Schema, Session } from "koishi";
 
-import { assertReplyTurn } from "../agent/reply-turn";
+import { assertReplyTurn, awaitReplyTurn } from "../agent/reply-turn";
 import { Config } from "../config";
 import type { LoggerService } from "../logger";
 import { PromptService } from "../prompt";
@@ -476,41 +476,47 @@ export class ToolService extends YesImBotService<Config> {
         const startedAt = new Date(),
             requestId = randomUUID();
         const result = await this.executeInvocation(functionName, params, session);
+        assertReplyTurn();
         const world = this.deps.world;
         if (session?.platform && session.channelId && world?.recordSystemEvent) {
+            const channelId = session.channelId;
             try {
                 const admin = session.argv?.command?.name === "tool.call";
                 const historyGeneration = Number.isSafeInteger(result.result?.historyGeneration) ? result.result.historyGeneration : undefined;
-                const recorded = await world.recordSystemEvent(
-                    {
-                        id: requestId,
-                        platform: session.platform,
-                        channelId: session.channelId,
-                        eventScope: "channel",
-                        type: "tool-result",
-                        timestamp: new Date(),
-                        payload: {
-                            requestId,
-                            actor: admin ? `admin:${session.platform}:${session.userId}` : "model",
-                            requester: session.userId,
-                            operation: functionName,
-                            scope: "channel",
-                            origin: { platform: session.platform, selfId: session.selfId, adapter: session.bot?.platform, channelId: session.channelId },
-                            target: { platform: session.platform, selfId: session.selfId, channelId: session.channelId },
-                            startedAt: startedAt.toISOString(),
-                            finishedAt: new Date().toISOString(),
-                            status: result.status,
-                            receipt: JSON.stringify(sanitizeDiagnostic(result)).slice(0, 2000),
+                const recorded = await awaitReplyTurn(() =>
+                    world.recordSystemEvent(
+                        {
+                            id: requestId,
+                            platform: session.platform,
+                            channelId,
+                            eventScope: "channel",
+                            type: "tool-result",
+                            timestamp: new Date(),
+                            payload: {
+                                requestId,
+                                actor: admin ? `admin:${session.platform}:${session.userId}` : "model",
+                                requester: session.userId,
+                                operation: functionName,
+                                scope: "channel",
+                                origin: { platform: session.platform, selfId: session.selfId, adapter: session.bot?.platform, channelId },
+                                target: { platform: session.platform, selfId: session.selfId, channelId },
+                                startedAt: startedAt.toISOString(),
+                                finishedAt: new Date().toISOString(),
+                                status: result.status,
+                                receipt: JSON.stringify(sanitizeDiagnostic(result)).slice(0, 2000),
+                            },
+                            message: "框架工具调用已返回；记录的状态是工具回执，不代表所有外部副作用均已核实。",
                         },
-                        message: "框架工具调用已返回；记录的状态是工具回执，不代表所有外部副作用均已核实。",
-                    },
-                    historyGeneration,
+                        historyGeneration,
+                    ),
                 );
                 if (recorded === false && historyGeneration !== undefined) return Failed("召回后历史已清除，请重新召回");
             } catch (error) {
+                assertReplyTurn();
                 this._logger.warn(`工具结果事件投递失败：${String(error)}`);
             }
         }
+        assertReplyTurn();
         return result;
     }
 
@@ -543,13 +549,23 @@ export class ToolService extends YesImBotService<Config> {
             try {
                 if (attempt > 1) {
                     this._logger.info(`  - 重试 (${attempt - 1}/${this.config.advanced?.maxRetry ?? 0})`);
-                    await new Promise((resolve) => setTimeout(resolve, this.config.advanced?.retryDelay ?? 1000));
+                    let timer: ReturnType<typeof setTimeout>;
+                    try {
+                        await awaitReplyTurn(
+                            () =>
+                                new Promise<void>((resolve) => {
+                                    timer = setTimeout(resolve, this.config.advanced?.retryDelay ?? 1000);
+                                }),
+                        );
+                    } finally {
+                        clearTimeout(timer!);
+                    }
                 }
 
                 assertReplyTurn();
                 // 3. 使用验证和处理过后的参数执行工具
                 /* prettier-ignore */
-                lastResult = (await tool.execute({ ...validatedParams, session })) || Failed("Tool call did not execute.");
+                lastResult = (await awaitReplyTurn(() => tool.execute({ ...validatedParams, session }))) || Failed("Tool call did not execute.");
                 const resultString = truncate(stringify(lastResult), 120);
 
                 if (lastResult.status === "success") {
@@ -568,6 +584,7 @@ export class ToolService extends YesImBotService<Config> {
                     return lastResult;
                 }
             } catch (error) {
+                assertReplyTurn();
                 this._logger.error(`💥 异常 | 调用 ${functionName} 时出错`, error.message);
                 this._logger.debug(error.stack);
                 lastResult = Failed(`Exception: ${error.message}`);

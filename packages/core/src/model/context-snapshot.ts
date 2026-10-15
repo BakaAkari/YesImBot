@@ -15,6 +15,8 @@ export interface ContextSnapshot {
     inputTokens?: number;
     content?: string;
     unavailable?: string;
+    contextBudget?: unknown;
+    traceId?: string;
 }
 
 const stores = new WeakMap<object, Map<string, ContextSnapshot>>();
@@ -28,16 +30,29 @@ function owner(ctx: Context, explicitOwner?: UsageOwner): object {
 
 export function captureContextSnapshot(
     ctx: Context,
-    metadata: { platform?: string; botId?: string; target?: string; provider: string; model: string; purpose?: string },
+    metadata: {
+        platform?: string;
+        botId?: string;
+        target?: string;
+        provider: string;
+        model: string;
+        purpose?: string;
+        contextBudget?: unknown;
+        traceId?: string;
+    },
     payload: unknown,
     period: string,
     unavailable?: string,
     explicitOwner?: UsageOwner,
 ): void {
+    const traceId =
+        typeof metadata.traceId === "string" && metadata.traceId.length > 0 && metadata.traceId.length <= 512 && !/\p{Cc}/u.test(metadata.traceId)
+            ? metadata.traceId
+            : undefined;
     const identity = owner(ctx, explicitOwner);
     let store = stores.get(identity);
     if (!store) stores.set(identity, (store = new Map()));
-    const key = JSON.stringify([metadata.platform, metadata.botId, metadata.target, metadata.provider, metadata.model, metadata.purpose]);
+    const key = JSON.stringify([metadata.platform, metadata.botId, metadata.target, metadata.provider, metadata.model, metadata.purpose, traceId]);
     const snapshot: ContextSnapshot = {
         timestamp: Date.now(),
         period,
@@ -47,6 +62,8 @@ export function captureContextSnapshot(
         provider: metadata.provider,
         model: metadata.model,
         purpose: metadata.purpose,
+        contextBudget: metadata.contextBudget,
+        traceId,
     };
     if (unavailable) snapshot.unavailable = unavailable;
     else
@@ -65,7 +82,7 @@ export function captureContextSnapshot(
                 let multimodal = false;
                 const input = contextBody as any;
                 const context = input?.messages
-                    ? { messages: input.messages, tools: input.tools, response_format: input.response_format }
+                    ? { messages: input.messages, system: input.system, tools: input.tools, response_format: input.response_format }
                     : (input?.input ?? { state: input?.state, questions: input?.questions });
                 const text = JSON.stringify(context, (_key, value) => {
                     if (value && typeof value === "object" && ["image_url", "input_audio", "image", "audio", "video"].includes(value.type)) multimodal = true;
@@ -86,8 +103,12 @@ export function captureContextSnapshot(
     }
 }
 
-export function getContextSnapshots(ctx: Context, explicitOwner?: UsageOwner): ContextSnapshot[] {
-    return [...(stores.get(owner(ctx, explicitOwner))?.values() ?? [])].map((snapshot) => ({ ...snapshot }));
+export function getContextSnapshots(ctx: Context, traceIdOrOwner?: string | UsageOwner): ContextSnapshot[] {
+    const traceId = typeof traceIdOrOwner === "string" ? traceIdOrOwner : undefined;
+    const explicitOwner = typeof traceIdOrOwner === "object" ? traceIdOrOwner : undefined;
+    return [...(stores.get(owner(ctx, explicitOwner))?.values() ?? [])]
+        .filter((snapshot) => traceId === undefined || snapshot.traceId === traceId)
+        .map((snapshot) => ({ ...snapshot }));
 }
 
 export function clearContextSnapshots(ctx: Context, explicitOwner?: UsageOwner): void {

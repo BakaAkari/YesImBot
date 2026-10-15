@@ -13,6 +13,7 @@ import { HISTORY_CHANNELS, MESSAGE_KEY_MIGRATION, registerChannelModel, sessionC
 import { HistoryCommandManager } from "./commands";
 import { ContextBuilder } from "./context-builder";
 import { EventListenerManager } from "./event-listener";
+import { historyCoordinator, withHistoryBarrier } from "./history-coordinator";
 import { InteractionManager } from "./interaction-manager";
 import { SemanticMemoryManager } from "./l2-semantic-memory";
 import { ArchivalMemoryManager } from "./l3-archival-memory";
@@ -25,7 +26,7 @@ declare module "koishi" {
     interface Events {
         "yesimbot/before-user-stimulus": (session: Session) => void | Promise<void>;
         "yesimbot/filter-recalled-memory": (session: Session, state: any) => void | Promise<void>;
-        "agent/stimulus": (stimulus: AgentStimulus<any>) => void;
+        "agent/stimulus": (stimulus: AgentStimulus<any>, ownerId?: string) => void;
         "agent/bot-muted": (target: { platform: string; selfId: string; channelId: string }) => void;
     }
     interface Tables {
@@ -39,6 +40,9 @@ declare module "koishi" {
 }
 
 export class WorldStateService extends YesImBotService<Config> {
+    /** Runtime identity changes on reload. */
+    public readonly stimulusOwnerId = randomUUID();
+
     /** Extension contract v1; feature detection also supports source checkouts. */
     public get capabilities() {
         return Object.freeze({
@@ -131,6 +135,7 @@ export class WorldStateService extends YesImBotService<Config> {
         const { platform, channelId } = session;
         if (!platform || !channelId) throw new Error("当前会话缺少平台或频道");
         const target = { platform, channelId };
+        await this.l2_manager.waitForHistoryClear(target);
         const historyGeneration = this.l2_manager.getHistoryGeneration(target);
         const page = await recallRawPage(this.ctx.database, target, options);
         if (page.kind !== "messages") {
@@ -182,8 +187,13 @@ export class WorldStateService extends YesImBotService<Config> {
     }
 
     public async buildWorldState(session: Session): Promise<WorldState> {
+        const target = { platform: session.platform, channelId: session.channelId! };
+        await this.l2_manager.waitForHistoryClear(target);
+        const generation = this.l2_manager.getHistoryGeneration(target);
         const state = await this.contextBuilder.build(session);
+        if (this.l2_manager.getHistoryGeneration(target) !== generation) throw new Error("上下文构建期间历史已清除，请重新触发回复");
         await this.ctx.parallel(session, "yesimbot/filter-recalled-memory", session, state);
+        if (this.l2_manager.getHistoryGeneration(target) !== generation) throw new Error("上下文构建期间历史已清除，请重新触发回复");
         return state;
     }
 
@@ -477,14 +487,17 @@ export class WorldStateService extends YesImBotService<Config> {
         try {
             const expiresAt = Date.now() - this.config.dataRetentionDays * 24 * 60 * 60 * 1000;
 
-            // Each retention deletion is idempotent and retried next run on
-            // failure. A shared SQLite transaction could roll back unrelated
-            // ordinary writes accepted while cleanup awaits its next deletion.
-            await this.ctx.database.remove(TableName.Messages, { timestamp: { $lt: new Date(expiresAt) } });
-            await this.ctx.database.remove(TableName.SystemEvents, { timestamp: { $lt: new Date(expiresAt) } });
-            await this.ctx.database.remove(TableName.L2Chunks, { endTimestamp: { $lt: new Date(expiresAt) } });
+            // Retention shares the physical-database barrier with export, restore and clear.
+            await withHistoryBarrier(historyCoordinator(this.ctx.database), { type: "all" }, async () => {
+                // Each retention deletion is idempotent and retried next run on
+                // failure. A shared SQLite transaction could roll back unrelated
+                // ordinary writes accepted while cleanup awaits its next deletion.
+                await this.ctx.database.remove(TableName.Messages, { timestamp: { $lt: new Date(expiresAt) } });
+                await this.ctx.database.remove(TableName.SystemEvents, { timestamp: { $lt: new Date(expiresAt) } });
+                await this.ctx.database.remove(TableName.L2Chunks, { endTimestamp: { $lt: new Date(expiresAt) } });
 
-            await this.l1_manager.pruneOldData();
+                await this.l1_manager.pruneOldData();
+            });
             this.logger.info("历史数据清理完成");
         } catch (error) {
             this.logger.error("历史数据清理失败", error);
