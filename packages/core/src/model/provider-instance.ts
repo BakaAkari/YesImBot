@@ -10,6 +10,7 @@ import { ContextLimitResult, contextMetadataURL, parseContextLimit, readContextL
 import { EmbedModel, IEmbedModel } from "./embed-model";
 import { EvaluationModel } from "./evaluation-model";
 import { IProviderClient } from "./factories";
+import type { UsageOwner } from "./usage-owner";
 
 export class ProviderInstance {
     public readonly name: string;
@@ -26,6 +27,7 @@ export class ProviderInstance {
         public readonly config: ProviderConfig,
         private readonly client: IProviderClient,
         private readonly logging: LoggerService,
+        private readonly usageOwner?: UsageOwner,
     ) {
         this.name = config.name;
         this.logger = logging.getLogger(`[提供商] [${this.name}]`);
@@ -49,7 +51,14 @@ export class ProviderInstance {
     private _getModel<T extends BaseModel>(
         modelId: string,
         requiredAbility: ModelAbility,
-        modelConstructor: new (ctx: Context, providerFn: any, config: ModelConfig, fetch: typeof globalThis.fetch, logging: LoggerService) => T,
+        modelConstructor: new (
+            ctx: Context,
+            providerFn: any,
+            config: ModelConfig,
+            fetch: typeof globalThis.fetch,
+            logging: LoggerService,
+            usageOwner?: UsageOwner,
+        ) => T,
         providerCapability: unknown,
         capabilityName: string,
     ): T | null {
@@ -72,7 +81,7 @@ export class ProviderInstance {
         const finalModelConfig: ModelConfig = { ...modelConfig, providerName: this.name };
 
         //this.logger.debug(`[获取模型] 🟢 成功 | 模型ID: ${modelId} | 能力: ${capabilityName}`);
-        return new modelConstructor(this.ctx, providerCapability, finalModelConfig, this.fetch, this.logging);
+        return new modelConstructor(this.ctx, providerCapability, finalModelConfig, this.fetch, this.logging, this.usageOwner);
     }
 
     public getEvaluationModel(modelId: string): EvaluationModel | null {

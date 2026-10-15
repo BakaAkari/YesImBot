@@ -11,6 +11,7 @@ import { BaseModel, formatModelIdentity } from "./base-model";
 import { ModelAbility, ModelConfig } from "./config";
 import { StreamDiagnostics } from "./stream-diagnostics";
 import { observeUsageFetch } from "./usage";
+import type { UsageOwner } from "./usage-owner";
 
 /**
  * 验证器函数的返回值
@@ -76,9 +77,10 @@ export class ChatModel extends BaseModel implements IChatModel {
         modelConfig: ModelConfig,
         private readonly fetch: typeof globalThis.fetch,
         logging: LoggerService,
+        usageOwner?: UsageOwner,
     ) {
         super(ctx, modelConfig, `[聊天模型] ${formatModelIdentity(modelConfig)}`, logging);
-        this.fetch = observeUsageFetch(ctx, { provider: modelConfig.providerName ?? "未知", model: this.id, purpose: "对话" }, fetch);
+        this.fetch = observeUsageFetch(ctx, { provider: modelConfig.providerName ?? "未知", model: this.id, purpose: "对话" }, fetch, usageOwner);
         this.parseCustomParameters();
     }
 

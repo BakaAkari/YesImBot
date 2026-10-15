@@ -7,6 +7,7 @@ import type { LoggerService } from "../logger";
 import { BaseModel, formatModelIdentity } from "./base-model";
 import { ModelConfig } from "./config";
 import { observeUsageFetch } from "./usage";
+import type { UsageOwner } from "./usage-owner";
 
 export interface IEmbedModel extends BaseModel {
     embed(text: string): Promise<EmbedResult>;
@@ -20,9 +21,10 @@ export class EmbedModel extends BaseModel implements IEmbedModel {
         modelConfig: ModelConfig,
         private readonly fetch: typeof globalThis.fetch,
         logging: LoggerService,
+        usageOwner?: UsageOwner,
     ) {
         super(ctx, modelConfig, `[嵌入模型] ${formatModelIdentity(modelConfig)}`, logging);
-        this.fetch = observeUsageFetch(ctx, { provider: modelConfig.providerName ?? "未知", model: this.id, purpose: "嵌入" }, fetch);
+        this.fetch = observeUsageFetch(ctx, { provider: modelConfig.providerName ?? "未知", model: this.id, purpose: "嵌入" }, fetch, usageOwner);
     }
 
     public async embed(text: string): Promise<EmbedResult> {
