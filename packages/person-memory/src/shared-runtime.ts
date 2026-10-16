@@ -2,10 +2,13 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { Context, Schema, h, type Session } from "koishi";
 
+import { PeopleCatalog } from "./catalog";
 import { describePeopleCommand } from "./command-help";
 import { escapeContext } from "./context";
 import { ContinuityStore, registerContinuityModels, sourceRef, summaryUnsafeIn, type RecallTarget } from "./continuity";
 import type { Config, Dependencies } from "./index";
+import { mainProfilePolicy } from "./profile-prompt";
+import { catalogParameters, catalogProfile, catalogRequest, profileInputSchema, visibleProfile } from "./profile-tools";
 import { PersonStore, accountRef, mindScope, registerModels, sceneKey, type Audit, type Mode, type SceneInput } from "./store";
 import { SummaryWorker, summaryResponseText, type SummaryModel } from "./worker";
 
@@ -186,6 +189,15 @@ export function applySharedMemory(ctx: Context, config: Config) {
         } as any);
         return ctx.filter(probe) && world.isChannelAllowed(probe);
     };
+    const profileSceneAllowed = (scene: { key: string; platform: string; selfId: string; channelId: string }, targets: RecallTarget[], session: Session) =>
+        targets.some(
+            (target) =>
+                target.platform === scene.platform &&
+                target.selfId === scene.selfId &&
+                target.channelId === scene.channelId &&
+                scene.key === sceneKey({ ...target, userId: target.userId || session.userId } as SceneInput) &&
+                targetAllowed(target, session),
+        );
     const targetsFor = async (session: Session, scope: string): Promise<RecallTarget[]> => {
         const current = {
             platform: session.platform,
@@ -394,6 +406,7 @@ export function applySharedMemory(ctx: Context, config: Config) {
         const session: Session = view.session;
         if (!session || !baseAllowed(session)) return "";
         const scope = scopeOf(session),
+            boundTarget = sessionTargetKey(session),
             state = await modeOf(scope);
         if (state.settings.mode === "off" || !active) return "";
         const recent = view.WORLD_STATE?.l1_working_memory;
@@ -405,6 +418,9 @@ export function applySharedMemory(ctx: Context, config: Config) {
                 ].filter(Boolean),
             ),
         ].slice(0, 6);
+        const profileTargets = await targetsFor(session, scope);
+        const allowProfileScene = (scene: { key: string; platform: string; selfId: string; channelId: string }) =>
+            profileSceneAllowed(scene, profileTargets, session);
         const profiles = [];
         for (const id of ids) {
             const found = await store.find(scope, accountRef(session.platform, id));
@@ -416,12 +432,13 @@ export function applySharedMemory(ctx: Context, config: Config) {
                 locked: found.person.locked,
                 stale: found.person.stale,
                 identityChanged: !!found.person.identityChanged,
-                profile: found.person.stale ? "待复核，暂不采用旧画像" : found.person.profile.slice(0, 600),
+                profile: found.person.stale ? "待复核，暂不采用旧画像" : visibleProfile(found.person, allowProfileScene).overview.slice(0, 600),
                 accounts: found.accounts.slice(0, 6),
                 currentAccount: accountRef(session.platform, id),
             });
         }
         let text = `<people mode="${state.settings.mode}">${boundedData(profiles, 4500)}</people>`;
+        text += `\n${mainProfilePolicy(config.profileSystemPrompt)}`;
         text +=
             "\n人物资料是可修正认识；使用 person_memory 查完整版本，person_recall 按关键词、日期和人物回忆。只有 auto 可自动接受新鲜有来源的关联；管理员锁定与纠错优先。";
         if (config.automaticRecall && /记得|记不记得|之前|上次|以前|昨天|前天|上周|上个月|remember|previous/i.test(session.content || "")) {
@@ -436,7 +453,15 @@ export function applySharedMemory(ctx: Context, config: Config) {
             if (events.length) text += `\n<framework_events>${boundedData(events, 2200)}</framework_events>`;
         }
         const current = await modeOf(scope);
-        return active && current.settings.mode !== "off" && JSON.stringify(current.people) === JSON.stringify(state.people) ? text : "";
+        return active &&
+            baseAllowed(session) &&
+            scopeOf(session) === scope &&
+            sessionTargetKey(session) === boundTarget &&
+            profileTargets.every((target) => targetAllowed(target, session)) &&
+            current.settings.mode !== "off" &&
+            JSON.stringify([current.people, current.accounts]) === JSON.stringify([state.people, state.accounts])
+            ? text
+            : "";
     });
     ctx.on("yesimbot/filter-recalled-memory", async (session: Session, state: any) => {
         if (!baseAllowed(session)) return;
@@ -481,16 +506,18 @@ export function applySharedMemory(ctx: Context, config: Config) {
             logger.warn(`旧摘要校验失败：${String(error)}`);
         }
     });
+    const catalog = new PeopleCatalog();
     const personTool = {
         name: "person_memory",
         description:
-            "共同域人物记忆。read/search/history 查资料；propose 提交画像；propose_link 提交账号关联。review 等管理员确认，auto 可自动接受；锁定、暂停与版本校验始终生效。account_id 可为当前平台 ID、人物 UUID 或 JSON [平台,ID]；消息证据使用当前场景消息 ID，跨场景证据使用 people.sources 或 read 返回的来源编号。",
+            "共同域人物记忆。list 列出可查询人物；read_many 用 account_ids 多选或 all=true 全选，fields 选 overview/structured/full，cursor 继续分页。read/search/history 查资料；propose 提交画像；propose_link 提交账号关联。review 等管理员确认，auto 可自动接受；锁定、暂停与版本校验始终生效。account_id 可为当前平台 ID、人物 UUID 或 JSON [平台,ID]；消息证据使用当前场景消息 ID，跨场景证据使用 people.sources 或 read 返回的来源编号。",
         isSupported: readable,
         parameters: Schema.object({
-            action: Schema.union(["read", "search", "history", "propose", "propose_link"]).required(),
+            action: Schema.union(["list", "read_many", "read", "search", "history", "propose", "propose_link"]).required(),
             account_id: Schema.string(),
             query: Schema.string(),
-            profile: Schema.string(),
+            profile: profileInputSchema(),
+            ...catalogParameters(),
             message_ids: Schema.array(Schema.string()),
             person_id: Schema.string(),
             person_revision: Schema.number(),
@@ -509,14 +536,45 @@ export function applySharedMemory(ctx: Context, config: Config) {
                 const requestCurrent = () => baseAllowed(session) && scopeOf(session) === boundScope && targetKey() === boundTarget;
                 const { scope, state } = await assertEnabled(session);
                 if (!requestCurrent()) throw new Error("共同记忆请求已失效");
+                const ensureCurrent = async (targets: RecallTarget[] = []) => {
+                    const latest = await store.read(scope);
+                    if (
+                        !requestCurrent() ||
+                        latest.settings.mode === "off" ||
+                        !targets.every((target) => targetAllowed(target, session)) ||
+                        JSON.stringify([latest.people, latest.accounts]) !== JSON.stringify([state.people, state.accounts])
+                    )
+                        throw new Error("人物资料或查询权限已改变，请重新查询");
+                };
+                if (args.action === "list" || args.action === "read_many") {
+                    const targets = await targetsFor(session, scope);
+                    const allowScene = (scene: { key: string; platform: string; selfId: string; channelId: string }) =>
+                        profileSceneAllowed(scene, targets, session);
+                    const current = () => requestCurrent() && targets.every((target) => targetAllowed(target, session));
+                    const result = await catalog.query(
+                        `${scope}:${boundTarget}:${JSON.stringify(targets)}`,
+                        catalogRequest({
+                            ...args,
+                            action: args.action,
+                            account_ids: args.account_ids?.map((ref: string) => refOf(session, ref)),
+                        }),
+                        () => store.read(scope),
+                        () => current(),
+                        (person, accounts, fields) => catalogProfile(person, accounts, fields, allowScene),
+                    );
+                    if (!current()) throw new Error("共同记忆查询会话已失效");
+                    return success(result);
+                }
                 if (args.action === "search") {
                     if (typeof args.query !== "string" || !args.query.trim() || args.query.length > 80) throw new Error("请提供 1–80 字关键词");
-                    return success(
-                        Object.values(state.people)
-                            .filter((p) => p.name.includes(args.query) || (!p.stale && p.profile.includes(args.query)))
-                            .slice(0, 5)
-                            .map((p) => ({ ...p, profile: p.stale ? "" : p.profile.slice(0, 600), evidence: [] })),
-                    );
+                    const targets = await targetsFor(session, scope);
+                    const projected = Object.values(state.people).map((person) => ({
+                        ...person,
+                        ...visibleProfile(person, (scene) => profileSceneAllowed(scene, targets, session)),
+                        evidence: [],
+                    }));
+                    await ensureCurrent(targets);
+                    return success(projected.filter((p) => p.name.includes(args.query) || p.profile.includes(args.query)).slice(0, 5));
                 }
                 const ref = refOf(args.session, args.account_id),
                     found = await store.find(scope, ref);
@@ -528,9 +586,11 @@ export function applySharedMemory(ctx: Context, config: Config) {
                         found.accounts.some((a) => !Object.values(latest.accounts).some((b) => b.userId === a.userId && b.revision === a.revision))
                     )
                         throw new Error("认识已改变，请重新读取");
+                    const targets = await targetsFor(session, scope);
+                    await ensureCurrent(targets);
                     return success({
                         ...found.person,
-                        profile: found.person.stale ? "" : found.person.profile,
+                        ...visibleProfile(found.person, (scene) => profileSceneAllowed(scene, targets, session)),
                         evidence: found.person.evidence.map((e) => ({
                             id: e.id,
                             userId: e.userId,
@@ -542,7 +602,7 @@ export function applySharedMemory(ctx: Context, config: Config) {
                 }
                 if (args.action === "history") {
                     const rows = await store.history(scope, 10, { personId: found.person.id });
-                    await assertEnabled(args.session);
+                    await ensureCurrent();
                     return success(rows.map((e) => ({ id: e.id, action: e.action, timestamp: e.timestamp, actor: e.actor, revision: e.revision })));
                 }
                 if (args.action !== "propose" && args.action !== "propose_link") throw new Error("不支持的模型操作");
@@ -673,6 +733,11 @@ export function applySharedMemory(ctx: Context, config: Config) {
     command("people.edit <ref:string> <profile:text>", "人工纠正完整画像", async (s, w, scope, [ref, profile]) =>
         w.setProfile(scope, refOf(s, ref), profile, actor(s)),
     );
+    command("people.edit_json <ref:string> <profile:text>", "人工纠正完整结构画像（JSON）", async (s, w, scope, [ref, profile]) => {
+        const document = JSON.parse(profile);
+        if (!document || typeof document !== "object" || Array.isArray(document)) throw new Error("请提供完整结构画像 JSON 对象");
+        return w.setProfile(scope, refOf(s, ref), document, actor(s));
+    });
     command("people.rename <ref:string> <name:text>", "修改共同称呼", async (s, w, scope, [ref, name]) => w.rename(scope, refOf(s, ref), name, actor(s)));
     command("people.clear <ref:string>", "清空画像，保留来源与审计", async (s, w, scope, [ref]) => w.setProfile(scope, refOf(s, ref), "", actor(s)));
     command("people.bind <account:string> <target:string> [confidence:number]", "纠正账号归属", async (s, w, scope, [account, target, confidence = 1]) =>

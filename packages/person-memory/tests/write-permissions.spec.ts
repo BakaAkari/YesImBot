@@ -73,9 +73,10 @@ for (const action of ["propose", "propose_link"])
             app.database.get = async (...args: any[]) => {
                 const rows = await (get as any)(...args);
                 if (args[0] === "person_memory.sources") sourcesRead++;
-                // The first read validates provenance; the second belongs to
-                // PersonStore.propose. Revoke during its later snapshot query.
-                if (!revoked && sourcesRead >= 2 && args[0] === "person_memory.audit") {
+                // The first read validates caller provenance; the second is the
+                // store's source validation inside its edit. Revoke after that
+                // awaited read, before the store's final active check and INSERT.
+                if (!revoked && sourcesRead >= 2 && args[0] === "person_memory.sources") {
                     revoked = true;
                     if (revoke === "session") session.channelId = "replacement";
                     else if (revoke === "scope") session.selfId = "replacement";
