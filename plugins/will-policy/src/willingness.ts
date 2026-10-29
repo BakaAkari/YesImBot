@@ -7,10 +7,10 @@ import {
   type WillDebug,
   type WillState,
   type WillEngine,
-  TurnResult,
+  type WillObservation,
 } from "koishi-plugin-aka-yesimbot";
 
-import { hasImage, hasQuote, mentionKind } from "./message-context.js";
+import { hasImage, hasQuote, mentionKind, quotedIds } from "./message-context.js";
 import type { PolicyWillingnessConfig } from "./types.js";
 
 const DIRECT_CHANNEL_TYPE = 1 satisfies Universal.Channel.Type;
@@ -19,6 +19,9 @@ export class PolicyWillingnessEngine implements WillEngine {
   private score = 0;
   private lastMessageAt: number | null = null;
   private lastDecayAt: number | null = null;
+  /** Platform IDs of messages this bot sent, so quotes of them can be told apart from other quotes. */
+  private readonly ownIds = new Set<string>();
+  private readonly ownIdOrder: string[] = [];
 
   public constructor(
     private readonly config: PolicyWillingnessConfig,
@@ -45,7 +48,7 @@ export class PolicyWillingnessEngine implements WillEngine {
     this.lastMessageAt = now;
     this.lastDecayAt = now;
 
-    const forced = shouldForce(input.data, this.config);
+    const forced = shouldForce(input.data, this.config, (id) => this.ownIds.has(id));
     const decision: "wait" | "trigger" = forced || Math.random() < probability ? "trigger" : "wait";
     this.logger.debug("will_policy.willingness", {
       messageId: input.id,
@@ -75,9 +78,22 @@ export class PolicyWillingnessEngine implements WillEngine {
     return decision;
   }
 
-  public async observe(_result: TurnResult): Promise<void> {
-    this.score = Math.max(0, this.score - this.config.replyCost);
-    this.logger.debug("will_policy.reply_cost", { score: this.score, replyCost: this.config.replyCost });
+  public async observe(result: WillObservation): Promise<void> {
+    const sent = result.sentMessageIds;
+    for (const id of sent ?? []) this.rememberOwn(id);
+    // Runtimes that predate sentMessageIds report nothing; keep charging once per turn for them.
+    const count = sent === undefined ? 1 : sent.length;
+    const cost = this.config.replyCost * count;
+    this.score = Math.max(0, this.score - cost);
+    this.logger.debug("will_policy.reply_cost", { score: this.score, replyCost: this.config.replyCost, sent: count, cost });
+  }
+
+  /** Records a message the bot delivered outside of `observe`, e.g. from the delivered event. */
+  public rememberOwn(id: string): void {
+    if (!id || this.ownIds.has(id)) return;
+    this.ownIds.add(id);
+    this.ownIdOrder.push(id);
+    if (this.ownIdOrder.length > 500) this.ownIds.delete(this.ownIdOrder.shift()!);
   }
 
   public getCurrentWillingness(): number {
@@ -164,13 +180,45 @@ function hasKeyword(elements: readonly unknown[] | undefined, keywords: readonly
       return [];
     })
     .join("");
-  return keywords.some((keyword) => text?.includes(keyword) ?? false);
+  return keywords.some((keyword) => matchesKeyword(text ?? "", keyword));
 }
 
-function shouldForce(data: Message, config: PolicyWillingnessConfig): boolean {
+const ASCII_WORD = /^[\x21-\x7e ]+$/;
+
+function isAsciiWord(char: string | undefined): boolean {
+  return char !== undefined && /[a-z0-9_]/.test(char);
+}
+
+/**
+ * `/pattern/flags` is a regular expression. A keyword made only of ASCII must stand as a whole
+ * word, so "ai" does not hit "said". Other keywords (Chinese has no word boundaries) still match
+ * as substrings; prefer longer phrases for them.
+ */
+export function matchesKeyword(text: string, keyword: string): boolean {
+  if (!keyword) return false;
+  const regex = /^\/(.+)\/([a-z]*)$/.exec(keyword);
+  if (regex) {
+    try {
+      return new RegExp(regex[1]!, regex[2]).test(text);
+    } catch {
+      return false;
+    }
+  }
+  if (!ASCII_WORD.test(keyword)) return text.includes(keyword);
+  const haystack = text.toLowerCase();
+  const needle = keyword.toLowerCase();
+  for (let index = haystack.indexOf(needle); index >= 0; index = haystack.indexOf(needle, index + 1)) {
+    const before = haystack[index - 1];
+    const after = haystack[index + needle.length];
+    if (!isAsciiWord(before) && !isAsciiWord(after)) return true;
+  }
+  return false;
+}
+
+function shouldForce(data: Message, config: PolicyWillingnessConfig, isOwn: (id: string) => boolean): boolean {
   if (config.directForce && data.channel.type === DIRECT_CHANNEL_TYPE) return true;
   if (config.mentionForce && mentionKind(data.selfId, data.elements) !== "none") return true;
-  return config.quoteForce && hasQuote(data.elements);
+  return config.quoteForce && quotedIds(data.elements).some(isOwn);
 }
 
 function isPokeEvent(input: AgentMessageOf<"yesimbot.event">): boolean {

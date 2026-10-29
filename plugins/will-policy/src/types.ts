@@ -37,10 +37,30 @@ export interface PolicyWillingnessConfig {
   readonly ignoredUserIds: string[];
 }
 
+export interface PolicySemanticConfig {
+  /** `shadow` runs the gate and logs it while willingness decides; `active` lets the gate decide. */
+  readonly mode: "shadow" | "active";
+  /** Full chat model id, e.g. `openai:gemini-3.5-flash-lite`. */
+  readonly model: string;
+  readonly selfName: string;
+  readonly persona: string;
+  readonly interests: string[];
+  readonly timeoutMs: number;
+  readonly historyLimit: number;
+  readonly debounceMs: number;
+  readonly maxWaitMs: number;
+  readonly questionGraceMs: number;
+  readonly shareWindowMs: number;
+  readonly shareCap: number;
+  readonly cooldownMs: number;
+  readonly ignoredUserIds: string[];
+}
+
 export interface WillPolicyConfig {
-  readonly engine: "routing" | "willingness";
+  readonly engine: "routing" | "willingness" | "semantic";
   readonly routing?: PolicyRoutingConfig;
   readonly willingness?: PolicyWillingnessConfig;
+  readonly semantic?: PolicySemanticConfig;
   readonly priority?: number;
 }
 
@@ -72,6 +92,25 @@ export function defaultWillingnessConfig(): PolicyWillingnessConfig {
     mentionForce: false,
     quoteForce: false,
     directForce: false,
+    ignoredUserIds: [],
+  };
+}
+
+export function defaultSemanticConfig(): PolicySemanticConfig {
+  return {
+    mode: "shadow",
+    model: "",
+    selfName: "",
+    persona: "",
+    interests: [],
+    timeoutMs: 4_000,
+    historyLimit: 15,
+    debounceMs: 6_000,
+    maxWaitMs: 20_000,
+    questionGraceMs: 60_000,
+    shareWindowMs: 2 * 60 * 60 * 1_000,
+    shareCap: 0.02,
+    cooldownMs: 90_000,
     ignoredUserIds: [],
   };
 }

@@ -18,3 +18,11 @@ export function hasQuote(elements: readonly Element[] | undefined): boolean {
 export function hasImage(elements: readonly Element[] | undefined): boolean {
   return elements?.some((element) => element.type === "img" || element.type === "image") ?? false;
 }
+
+/** IDs of the messages this message quotes or replies to. */
+export function quotedIds(elements: readonly Element[] | undefined): string[] {
+  return (elements ?? [])
+    .filter((element) => element.type === "quote" || element.type === "reply")
+    .map((element) => String(element.attrs?.id ?? ""))
+    .filter(Boolean);
+}
