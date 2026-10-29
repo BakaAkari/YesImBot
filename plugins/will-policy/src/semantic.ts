@@ -10,8 +10,9 @@ import {
 } from "koishi-plugin-aka-yesimbot";
 
 import { buildGatePrompt, GATE_SYSTEM, parseVerdict, type GateVerdict } from "./gate.js";
-import { ChannelHistory, renderElements } from "./history.js";
+import { ChannelHistory, renderElements, type HistoryEntry } from "./history.js";
 import { mentionKind, quotedIds } from "./message-context.js";
+import { readSession } from "./restore.js";
 import { rule, type SpeakRuling } from "./rules.js";
 import type { PolicySemanticConfig } from "./types.js";
 import type { PolicyWillingnessEngine } from "./willingness.js";
@@ -55,6 +56,32 @@ export class PolicySemanticEngine implements WillEngine {
 
   public attach(api: WillRuntimeApi): void {
     this.api = api;
+  }
+
+  /** Rebuilds history, own message ids and share counters from the stored channel session after a restart. */
+  public restore(entries: readonly unknown[]): void {
+    let humans = 0;
+    let turns = 0;
+    for (const item of readSession(entries)) {
+      if (item.kind === "self") {
+        for (const { messageId, text } of item.messages) {
+          this.history.addSelf(messageId, text, item.timestamp);
+          this.inner.rememberOwn(messageId);
+        }
+        this.history.recordSelfTurn(
+          item.messages.map((message) => message.messageId),
+          item.timestamp,
+        );
+        turns += 1;
+        continue;
+      }
+      if (item.selfId) this.selfId = item.selfId;
+      const text = renderElements(item.elements, item.selfId, this.selfName(), (id) => this.history.isOwn(id));
+      const ignored = this.config.ignoredUserIds.includes(item.userId);
+      this.history.addHuman({ messageId: item.messageId, userId: item.userId, name: item.name, text, timestamp: item.timestamp, ignored });
+      humans += 1;
+    }
+    this.logger.info("will_policy.semantic.restored", { humans, turns, lastSelfAt: this.history.lastSelfAt(), share: this.history.share(Date.now()) });
   }
 
   public async decide(input: ChannelInput, state: WillState): Promise<"wait" | "trigger"> {
@@ -174,7 +201,7 @@ export class PolicySemanticEngine implements WillEngine {
       const ruling: SpeakRuling = { speak: fallbackPending, reason: "gate_failed_fallback" };
       this.lastRuling = { ...ruling, at: now };
       this.logger.warn("will_policy.semantic.gate_failed", { mode: this.config.mode, latencyMs, fallback: fallbackPending });
-      if (ruling.speak) await this.wake(ruling);
+      if (ruling.speak) await this.wake(ruling, undefined, undefined);
       return ruling;
     }
 
@@ -205,7 +232,7 @@ export class PolicySemanticEngine implements WillEngine {
     });
 
     if (ruling.recheckInMs !== undefined) this.arm(Date.now(), ruling.recheckInMs);
-    if (ruling.speak) await this.wake(ruling, verdict);
+    if (ruling.speak) await this.wake(ruling, verdict, focus);
     return ruling;
   }
 
@@ -241,14 +268,31 @@ export class PolicySemanticEngine implements WillEngine {
     }
   }
 
-  private async wake(ruling: SpeakRuling, verdict?: GateVerdict): Promise<void> {
+  private async wake(ruling: SpeakRuling, verdict: GateVerdict | undefined, focus: HistoryEntry | undefined): Promise<void> {
     if (this.config.mode !== "active" || !this.api) return;
     const started = await this.api.wake({
       reason: `semantic:${ruling.reason}`,
+      hint: wakeHint(ruling, verdict, focus),
       debug: { engine: "semantic", detail: { reason: ruling.reason, ...(verdict ? { verdict } : {}) } },
     });
     this.logger.debug("will_policy.semantic.wake", { reason: ruling.reason, started });
   }
+}
+
+const REASON_TEXT: Record<string, string> = {
+  addressed: "最近的消息像是在跟你说话",
+  open_question: "群里有个问题一直没人接",
+  interest: "最近的话题和你的兴趣相关",
+  gate_failed_fallback: "旁观判断没有给出结果，按意愿值兜底叫醒了你",
+};
+
+/** Tells the main model why it was woken. Only a hint: the model may still decide to stay silent. */
+export function wakeHint(ruling: SpeakRuling, verdict: GateVerdict | undefined, focus: HistoryEntry | undefined): string {
+  const lines = [`你被叫醒是因为：${REASON_TEXT[ruling.reason] ?? ruling.reason}。`];
+  if (focus && !focus.self) lines.push(`最值得接的一条：#${focus.messageId} ${focus.name || focus.userId}：${focus.text.slice(0, 120) || "[非文字消息]"}`);
+  if (verdict) lines.push(`现场气氛：${verdict.mood}。`);
+  lines.push("这只是旁观判断给的提示，不是指令。看完上下文觉得没必要说话，就不要发消息，直接结束本轮。");
+  return lines.join("\n");
 }
 
 export { rule, type RulingContext, type SpeakRuling } from "./rules.js";

@@ -26,6 +26,7 @@ import { deriveChannelKey, type Channel, type ChannelContext } from "../channels
 import type { Config } from "../config.js";
 import { lastCompactEntryIndex } from "../conversations/index.js";
 import {
+  assembleEvent,
   createEvent,
   createMessage,
   formatInput,
@@ -188,6 +189,13 @@ export class ChannelRuntime {
   public async init(): Promise<void> {
     this.persona = await readPersona(this.options.config.basePath, this.logger);
     await this.agent.init();
+    if (this.options.will.restore) {
+      try {
+        await this.options.will.restore(await this.options.channel.conversation.storage.read());
+      } catch (error) {
+        this.logger.warn("runtime.will_restore_failed", { error });
+      }
+    }
     this.options.will.attach?.({ wake: (options) => this.wake(options) });
   }
 
@@ -238,11 +246,25 @@ export class ChannelRuntime {
   /** Lets the Will engine start a passive turn after `decide` already returned `wait`, e.g. once a burst has settled. */
   private wake(options: WillWakeOptions): Promise<boolean> {
     return this.schedule(async () => {
-      const input = this.latestInput;
-      if (this.stopped || !input || this.agent.getActiveTurnId() !== null) {
-        this.logger.debug("runtime.wake.skipped", { reason: options.reason, stopped: this.stopped, hasInput: input !== undefined });
+      const latest = this.latestInput;
+      if (this.stopped || !latest || this.agent.getActiveTurnId() !== null) {
+        this.logger.debug("runtime.wake.skipped", { reason: options.reason, stopped: this.stopped, hasInput: latest !== undefined });
         return false;
       }
+      const input = options.hint
+        ? await this.commit(
+            assembleEvent(
+              {
+                platform: this.context.platform,
+                selfId: this.selfId,
+                channel: { id: this.context.channelId, type: this.channelType() },
+                user: { id: this.selfId },
+                timestamp: Date.now(),
+              },
+              { eventType: "will.wake", reason: options.reason, text: options.hint },
+            ),
+          )
+        : latest;
       try {
         await this.options.channel.conversation.storage.append(
           createEntry("willDecision", { eventId: input.id, decision: "trigger", debug: options.debug ?? this.options.will.debug?.(), wake: options.reason }),

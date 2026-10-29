@@ -27,6 +27,8 @@ export type Event<K extends keyof EventMap = keyof EventMap> = K extends K ? Omi
 export type AgentMessageOf<T extends "yesimbot.message" | "yesimbot.event"> = CustomMessages<T>;
 
 export interface EventMap {
+  /** A Will engine woke the bot on its own; `text` tells the model why. */
+  "will.wake": { reason: string };
   "delivery.failed": {
     channel: Universal.Channel;
     delivery: { turnId: string; messageId: string; segmentIndex: number; segmentTotal: number; error: { name: string; message: string; code?: string } };

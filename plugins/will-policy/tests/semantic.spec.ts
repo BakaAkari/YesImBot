@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("koishi", async () => import("@koishijs/core"));
 
 import { buildGatePrompt, parseVerdict, type GateVerdict } from "../src/gate.js";
-import { PolicySemanticEngine, rule, type GateGenerate } from "../src/semantic.js";
+import { PolicySemanticEngine, rule, wakeHint, type GateGenerate } from "../src/semantic.js";
 import { defaultSemanticConfig, defaultWillingnessConfig, type PolicySemanticConfig } from "../src/types.js";
 import { matchesKeyword, PolicyWillingnessEngine } from "../src/willingness.js";
 
@@ -159,6 +159,96 @@ describe("PolicySemanticEngine", () => {
   });
 });
 
+const human = (id: string, at: number, elements: unknown[]) => ({
+  type: "message",
+  timestamp: at,
+  data: {
+    id: `e-${id}`,
+    timestamp: at,
+    role: "custom",
+    type: "yesimbot.message",
+    data: { platform: "test", selfId: "bot-1", channel: { id: "room-1", type: 0 }, user: { id: "user-1", name: "阿强" }, messageId: id, elements },
+  },
+});
+const sent = (turnId: string, at: number, callId: string, messages: string[], ids: string[]) => [
+  {
+    type: "message",
+    timestamp: at,
+    turnId,
+    data: { role: "assistant", content: [{ type: "tool-call", toolCallId: callId, toolName: "send_message", input: { messages } }] },
+  },
+  {
+    type: "message",
+    timestamp: at,
+    turnId,
+    data: {
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: callId,
+          toolName: "send_message",
+          output: { type: "json", value: { ok: true, messageIds: ids, count: ids.length } },
+        },
+      ],
+    },
+  },
+];
+const quote = (id: string) => message([{ type: "reply", attrs: { id }, children: [] }, text("嗯")]);
+
+describe("restore", () => {
+  const now = Date.now();
+
+  it("rebuilds history, own ids, cooldown and share from the session", async () => {
+    const generate = vi.fn<GateGenerate>(async () => JSON.stringify(verdict({ interest: 3, focusMessageId: "h2" })));
+    const { semantic, wake } = engine({ mode: "active" }, generate);
+    semantic.restore([
+      { type: "event", data: { name: "turn.start" } },
+      human("h1", now - 60_000, [text("显卡又涨价了")]),
+      ...sent("t1", now - 30_000, "c1", ["涨麻了"], ["own-1"]),
+      ...sent("t1", now - 29_000, "c2", ["不买了"], ["own-2"]),
+      { type: "message", data: { role: "tool", content: [{ type: "tool-result", toolName: "send_message", output: { type: "json", value: { ok: false } } }] } },
+      human("h2", now - 10_000, [{ type: "reply", attrs: { id: "own-1" }, children: [] }, text("真的假的")]),
+      "garbage",
+    ]);
+
+    expect(await semantic.decide(message([{ type: "reply", attrs: { id: "own-2" }, children: [] }, text("嗯？")]), state)).toBe("trigger");
+    const ruling = await semantic.flush();
+    expect(ruling?.reason).toBe("cooldown");
+    const prompt = generate.mock.calls[0]![1];
+    expect(prompt).toContain("#own-1 米塔(你): 涨麻了");
+    expect(prompt).toContain("#h2 阿强(user-1): [回复米塔的消息]真的假的");
+    expect(wake).not.toHaveBeenCalled();
+  });
+});
+
+describe("wake hint", () => {
+  it("names the reason, focus and mood and leaves silence open", () => {
+    const hint = wakeHint({ speak: true, reason: "interest" }, verdict({ mood: "认真" }), {
+      messageId: "m-9",
+      userId: "u1",
+      name: "阿强",
+      text: "4090 值得买吗",
+      timestamp: 0,
+      self: false,
+      ignored: false,
+    });
+    expect(hint).toContain("兴趣");
+    expect(hint).toContain("#m-9 阿强：4090 值得买吗");
+    expect(hint).toContain("认真");
+    expect(hint).toContain("直接结束本轮");
+    expect(wakeHint({ speak: true, reason: "gate_failed_fallback" }, undefined, undefined)).toContain("兜底");
+  });
+
+  it("is passed to the runtime on wake", async () => {
+    const generate = vi.fn<GateGenerate>(async () => JSON.stringify(verdict({ addressed: true })));
+    const { semantic, wake } = engine({ mode: "active" }, generate);
+    await semantic.decide(message([text("米塔你说呢")]), state);
+    await semantic.flush();
+    expect(wake).toHaveBeenCalledWith(expect.objectContaining({ hint: expect.stringContaining("米塔你说呢") }));
+  });
+});
+
 describe("gate prompt", () => {
   it("marks bots and the member's own lines", () => {
     const prompt = buildGatePrompt({
@@ -192,7 +282,6 @@ describe("willingness fixes", () => {
 
   it("forces on quotes of its own messages only", async () => {
     const willingness = new PolicyWillingnessEngine({ ...defaultWillingnessConfig(), probabilityThreshold: 1_000, quoteForce: true }, logger as never);
-    const quote = (id: string) => message([{ type: "reply", attrs: { id }, children: [] }, text("嗯")]);
     expect(await willingness.decide(quote("mine"), state)).toBe("wait");
     willingness.rememberOwn("mine");
     expect(await willingness.decide(quote("mine"), state)).toBe("trigger");

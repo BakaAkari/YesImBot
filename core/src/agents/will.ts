@@ -1,4 +1,4 @@
-import type { TurnResult } from "@yesimagent/core";
+import type { AgentEntry, TurnResult } from "@yesimagent/core";
 import type { Awaitable, Session, Universal } from "koishi";
 
 import type { ChannelContext } from "../channels/index.js";
@@ -31,6 +31,11 @@ export interface WillEngine {
   debug?(): WillDebug | undefined;
   /** Called once when the channel runtime starts, so the engine can trigger turns later instead of only inside `decide`. */
   attach?(api: WillRuntimeApi): void;
+  /**
+   * Called once at startup, before `attach` and the first `decide`, with the channel's stored conversation entries
+   * (oldest first), so the engine can rebuild state that would otherwise only exist in memory.
+   */
+  restore?(entries: readonly AgentEntry[]): Awaitable<void>;
 }
 
 /** A finished passive turn as seen by the engine. */
@@ -52,6 +57,11 @@ export interface WillWakeOptions {
   readonly reason: string;
   /** Decision details to record instead of the engine's current `debug()` snapshot. */
   readonly debug?: WillDebug;
+  /**
+   * Why the engine woke the bot, for the model. When set, it is stored in the channel as a `will.wake` event and
+   * the turn starts from that event, so the model reads it right after the chat it refers to.
+   */
+  readonly hint?: string;
 }
 
 export interface WillDebug {

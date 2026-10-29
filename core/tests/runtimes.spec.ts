@@ -387,10 +387,59 @@ describe("ChannelRuntime scheduling", () => {
       await expect(api!.wake({ reason: "settled" })).resolves.toBe(false);
       expect(state.run).toHaveBeenCalledOnce();
 
-      const entries = (await channel.conversation.storage.read()) as readonly { data?: { decision?: string; wake?: string } }[];
+      const entries = (await channel.conversation.storage.read()) as ReadonlyArray<{ data?: { decision?: string; wake?: string } }>;
       expect(entries.some((entry) => entry.data?.decision === "trigger" && entry.data.wake === "settled")).toBe(true);
     } finally {
       state.active = null;
+      await value.stop();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("restores the Will engine from history and wakes with a hint event", async () => {
+    let api: { wake(options: { reason: string; hint?: string }): Promise<boolean> } | undefined;
+    const order: string[] = [];
+    const restore = vi.fn(() => void order.push("restore"));
+    const root = await mkdtemp(path.join(tmpdir(), "yesimbot-runtime-"));
+    const channel = new Channel({ type: "guild", platform: "test", channelId: "room", guildId: "room" }, root);
+    await channel.conversation.init();
+    await channel.conversation.storage.append(createEntry("event" as never, { name: "marker" } as never));
+    const value = new ChannelRuntime(new Context(), {
+      channel,
+      bot: { selfId: "bot", sendMessage: vi.fn() } as never,
+      will: {
+        decide: state.decide,
+        observe: state.observe,
+        restore,
+        attach: (value: typeof api) => {
+          order.push("attach");
+          api = value;
+        },
+      } as never,
+      model: {} as never,
+      imageOutputSupported: false,
+      config,
+      plugins: [],
+    });
+    await value.init();
+    try {
+      expect(order).toEqual(["restore", "attach"]);
+      expect(restore.mock.calls[0]![0]).toHaveLength(1);
+
+      await value.handle(event);
+      state.run.mockReturnValue(
+        (async function* () {
+          yield { type: "turn.start", turnId: "turn-1" };
+          yield { type: "turn.done", turnId: "turn-1" };
+        })(),
+      );
+      await expect(api!.wake({ reason: "semantic:interest", hint: "话题是显卡" })).resolves.toBe(true);
+      const input = state.run.mock.calls[0]![0] as { type: string; data: { eventType: string; text: string; reason: string } };
+      expect(input).toMatchObject({ type: "yesimbot.event", data: { eventType: "will.wake", text: "话题是显卡", reason: "semantic:interest" } });
+      await vi.waitFor(() => expect(state.observe).toHaveBeenCalled());
+
+      expect(state.send).toHaveBeenCalledWith(input, { trigger: false });
+    } finally {
       await value.stop();
       await rm(root, { recursive: true, force: true });
     }
