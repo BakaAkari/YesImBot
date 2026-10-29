@@ -38,7 +38,7 @@ export const GATE_SYSTEM = `<role>
 </rules>
 
 <fields>
-addressed: 最近的消息是否在跟该成员说话。包括 @它、回复它的消息、点它的名字、明显在接它上一句话。泛泛地对全群说话不算。
+addressed: 最近的消息是否在跟该成员说话。包括 @它、回复它的消息、叫它的名字跟它说话、明显在接它上一句话。以下都不算：用第三人称谈论它（"米塔是 bot 吧""问米塔也没用"）、泛泛地对全群说话、只是顺带提到名字。
 others: 最近的消息是否明确是别人之间的你来我往，与该成员无关。
 openQuestion: 是否有面向全群的提问，而且还没人回答。反问、感叹、自问自答不算。
 interest: 0-3，最近的话题与该成员兴趣的贴合度。看实际在聊什么，不看字面是否出现某个词。0 无关，1 沾边，2 相关，3 正中兴趣。
@@ -70,6 +70,14 @@ focusMessageId: 最值得接的一条消息的 id（# 后面的值）；没有�
 [-10s] #c2 阿杰(444): 说清楚
 </history>
 <output>{"addressed":true,"others":false,"openQuestion":false,"interest":1,"complete":true,"mood":"闲","focusMessageId":"c2"}</output>
+</example>
+<example>
+<history>
+[-60s] #e0 米塔(你): 这卡不值
+[-15s] #e1 小周(666): 米塔又在乱说
+[-12s] #e2 老王(333): 别理它，它是 bot
+</history>
+<output>{"addressed":false,"others":true,"openQuestion":false,"interest":1,"complete":true,"mood":"嗨","focusMessageId":"e2"}</output>
 </example>
 <example>
 <history>

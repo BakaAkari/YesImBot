@@ -15,22 +15,37 @@ export interface RulingContext {
   readonly share: { human: number; self: number; topHuman: number };
 }
 
+function inCooldown(context: RulingContext, config: PolicySemanticConfig): boolean {
+  return context.lastSelfAt !== undefined && context.now - context.lastSelfAt < config.cooldownMs;
+}
+
+/** Big groups: stay near shareCap of human traffic. Small groups: never out-talk the most active human. */
+function shareReached(context: RulingContext, config: PolicySemanticConfig): boolean {
+  const { human, self, topHuman } = context.share;
+  return self >= Math.max(1, Math.min(config.shareCap * human, topHuman));
+}
+
+/** When the gate fails, the willingness fallback may still speak, but only within cooldown and share. */
+export function fallbackRule(fallbackPending: boolean, context: RulingContext, config: PolicySemanticConfig): SpeakRuling {
+  if (!fallbackPending) return { speak: false, reason: "gate_failed" };
+  if (inCooldown(context, config)) return { speak: false, reason: "gate_failed_cooldown" };
+  if (shareReached(context, config)) return { speak: false, reason: "gate_failed_share_cap" };
+  return { speak: true, reason: "gate_failed_fallback" };
+}
+
 /** Deterministic speak rules over a gate verdict; no randomness. */
 export function rule(verdict: GateVerdict, context: RulingContext, config: PolicySemanticConfig): SpeakRuling {
   if (verdict.addressed) return { speak: true, reason: "addressed" };
   if (!verdict.complete) return { speak: false, reason: "incomplete" };
   if (verdict.others) return { speak: false, reason: "others" };
-  if (context.lastSelfAt !== undefined && context.now - context.lastSelfAt < config.cooldownMs) return { speak: false, reason: "cooldown" };
+  if (inCooldown(context, config)) return { speak: false, reason: "cooldown" };
   if (verdict.openQuestion) {
     if (context.focusAgeMs >= config.questionGraceMs) return { speak: true, reason: "open_question" };
     return { speak: false, reason: "question_grace", recheckInMs: config.questionGraceMs - context.focusAgeMs };
   }
   if (verdict.interest >= 2) {
     if (verdict.mood === "冲突") return { speak: false, reason: "conflict" };
-    const { human, self, topHuman } = context.share;
-    // Big groups: stay near shareCap of human traffic. Small groups: never out-talk the most active human.
-    const limit = Math.max(1, Math.min(config.shareCap * human, topHuman));
-    if (self >= limit) return { speak: false, reason: "share_cap" };
+    if (shareReached(context, config)) return { speak: false, reason: "share_cap" };
     return { speak: true, reason: "interest" };
   }
   return { speak: false, reason: "not_interesting" };

@@ -13,11 +13,13 @@ import { buildGatePrompt, GATE_SYSTEM, parseVerdict, type GateVerdict } from "./
 import { ChannelHistory, renderElements, type HistoryEntry } from "./history.js";
 import { mentionKind, quotedIds } from "./message-context.js";
 import { readSession } from "./restore.js";
-import { rule, type SpeakRuling } from "./rules.js";
+import { fallbackRule, rule, type RulingContext, type SpeakRuling } from "./rules.js";
 import type { PolicySemanticConfig } from "./types.js";
 import type { PolicyWillingnessEngine } from "./willingness.js";
 
 const DIRECT_CHANNEL_TYPE = 1 satisfies Universal.Channel.Type;
+/** How long to wait before asking the gate again when a wake found the bot busy. */
+const BUSY_RETRY_MS = 30_000;
 
 /** Calls the gate model; rejects or aborts on failure. */
 export type GateGenerate = (system: string, prompt: string, signal: AbortSignal) => Promise<string>;
@@ -45,6 +47,10 @@ export class PolicySemanticEngine implements WillEngine {
   private selfId = "";
   private channelId = "";
   private lastRuling?: SpeakRuling & { verdict?: GateVerdict; at: number };
+  /** A wake already found the bot busy and scheduled its one retry. */
+  private busyRetried = false;
+  /** When the gate last started a turn, to time the main model. */
+  private wokeAt?: { at: number; reason: string };
 
   public constructor(
     private readonly config: PolicySemanticConfig,
@@ -119,13 +125,24 @@ export class PolicySemanticEngine implements WillEngine {
     }
 
     if (this.config.mode === "active" && fallback === "trigger") this.fallbackPending = true;
+    this.busyRetried = false;
     this.arm(now);
     return this.config.mode === "active" ? "wait" : fallback;
   }
 
   public async observe(result: WillObservation): Promise<void> {
     await this.inner.observe(result);
-    this.history.recordSelfTurn(result.sentMessageIds ?? [], Date.now());
+    const now = Date.now();
+    this.history.recordSelfTurn(result.sentMessageIds ?? [], now);
+    if (this.wokeAt) {
+      this.logger.info("will_policy.semantic.turn", {
+        channelId: this.channelId,
+        reason: this.wokeAt.reason,
+        sent: result.sentMessageIds?.length ?? 0,
+        sinceWakeMs: now - this.wokeAt.at,
+      });
+      this.wokeAt = undefined;
+    }
   }
 
   /** A message the bot delivered in this channel, from the `yesimbot/delivered` event. */
@@ -206,25 +223,31 @@ export class PolicySemanticEngine implements WillEngine {
     const verdict = await this.ask(history, now);
     const latencyMs = Date.now() - startedAt;
 
+    const focus = verdict
+      ? (history.find((entry) => entry.messageId === verdict.focusMessageId) ?? [...history].reverse().find((entry) => !entry.self))
+      : undefined;
+    const context: RulingContext = {
+      now,
+      lastSelfAt: this.history.lastSelfAt(),
+      focusAgeMs: focus ? now - focus.timestamp : 0,
+      share: this.history.share(now),
+    };
+
     if (!verdict) {
-      const ruling: SpeakRuling = { speak: fallbackPending, reason: "gate_failed_fallback" };
+      const ruling = fallbackRule(fallbackPending, context, this.config);
       this.lastRuling = { ...ruling, at: now };
-      this.logger.warn("will_policy.semantic.gate_failed", { mode: this.config.mode, channelId: this.channelId, latencyMs, fallback: fallbackPending });
+      this.logger.warn("will_policy.semantic.gate_failed", {
+        mode: this.config.mode,
+        channelId: this.channelId,
+        latencyMs,
+        fallback: fallbackPending,
+        reason: ruling.reason,
+      });
       if (ruling.speak) await this.wake(ruling, undefined, undefined);
       return ruling;
     }
 
-    const focus = history.find((entry) => entry.messageId === verdict.focusMessageId) ?? [...history].reverse().find((entry) => !entry.self);
-    const ruling = rule(
-      verdict,
-      {
-        now,
-        lastSelfAt: this.history.lastSelfAt(),
-        focusAgeMs: focus ? now - focus.timestamp : 0,
-        share: this.history.share(now),
-      },
-      this.config,
-    );
+    const ruling = rule(verdict, context, this.config);
     this.lastRuling = { ...ruling, verdict, at: now };
     this.logger.info("will_policy.semantic", {
       mode: this.config.mode,
@@ -287,6 +310,14 @@ export class PolicySemanticEngine implements WillEngine {
       debug: { engine: "semantic", detail: { reason: ruling.reason, ...(verdict ? { verdict } : {}) } },
     });
     this.logger.info("will_policy.semantic.wake", { channelId: this.channelId, reason: ruling.reason, started });
+    if (started) {
+      this.busyRetried = false;
+      this.wokeAt = { at: Date.now(), reason: ruling.reason };
+    } else if (!this.busyRetried) {
+      // The bot is mid-turn; look again once it has probably finished. Cooldown stops a double reply.
+      this.busyRetried = true;
+      this.arm(Date.now(), BUSY_RETRY_MS);
+    }
   }
 }
 
@@ -306,4 +337,4 @@ export function wakeHint(ruling: SpeakRuling, verdict: GateVerdict | undefined, 
   return lines.join("\n");
 }
 
-export { rule, type RulingContext, type SpeakRuling } from "./rules.js";
+export { fallbackRule, rule, type RulingContext, type SpeakRuling } from "./rules.js";

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("koishi", async () => import("@koishijs/core"));
 
 import { buildGatePrompt, parseVerdict, type GateVerdict } from "../src/gate.js";
-import { PolicySemanticEngine, rule, wakeHint, type GateGenerate } from "../src/semantic.js";
+import { fallbackRule, PolicySemanticEngine, rule, wakeHint, type GateGenerate } from "../src/semantic.js";
 import { defaultSemanticConfig, defaultWillingnessConfig, type PolicySemanticConfig } from "../src/types.js";
 import { matchesKeyword, PolicyWillingnessEngine } from "../src/willingness.js";
 
@@ -84,6 +84,18 @@ describe("rule", () => {
   });
 });
 
+describe("fallbackRule", () => {
+  const config = defaultSemanticConfig();
+  const base = { now: 1_000_000, lastSelfAt: undefined, focusAgeMs: 0, share: { human: 300, self: 0, topHuman: 50 } };
+
+  it("keeps the willingness fallback inside cooldown and share", () => {
+    expect(fallbackRule(false, base, config)).toEqual({ speak: false, reason: "gate_failed" });
+    expect(fallbackRule(true, base, config)).toEqual({ speak: true, reason: "gate_failed_fallback" });
+    expect(fallbackRule(true, { ...base, lastSelfAt: base.now - 1_000 }, config).reason).toBe("gate_failed_cooldown");
+    expect(fallbackRule(true, { ...base, share: { human: 300, self: 6, topHuman: 50 } }, config).reason).toBe("gate_failed_share_cap");
+  });
+});
+
 describe("PolicySemanticEngine", () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
@@ -140,6 +152,29 @@ describe("PolicySemanticEngine", () => {
     expect(await semantic.decide(message([{ type: "at", attrs: { id: "bot-1" }, children: [] }], { user: "bot-2" }), state)).toBe("wait");
     await vi.advanceTimersByTimeAsync(30_000);
     expect(generate).not.toHaveBeenCalled();
+  });
+
+  it("asks the gate once more when a wake finds the bot busy", async () => {
+    const generate = vi.fn<GateGenerate>(async () => JSON.stringify(verdict({ addressed: true })));
+    const { semantic, wake } = engine({ mode: "active" }, generate);
+    wake.mockResolvedValue(false);
+    await semantic.decide(message([text("米塔你说呢")]), state);
+    await vi.advanceTimersByTimeAsync(6_000);
+    expect(generate).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(generate).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(generate).toHaveBeenCalledTimes(2);
+  });
+
+  it("logs how long the woken turn took", async () => {
+    const generate = vi.fn<GateGenerate>(async () => JSON.stringify(verdict({ addressed: true })));
+    const { semantic } = engine({ mode: "active" }, generate);
+    await semantic.decide(message([text("米塔你说呢")]), state);
+    await semantic.flush();
+    await vi.advanceTimersByTimeAsync(5_000);
+    await semantic.observe({ turnId: "t", status: "done", messages: [], sentMessageIds: ["x"] });
+    expect(logger.info).toHaveBeenCalledWith("will_policy.semantic.turn", { channelId: "room-1", reason: "addressed", sent: 1, sinceWakeMs: 5_000 });
   });
 
   it("falls back to willingness when the gate fails or times out", async () => {
