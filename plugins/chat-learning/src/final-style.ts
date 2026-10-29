@@ -1,4 +1,4 @@
-import { AgentAssistantMessage, AgentEntry, AgentMessage, createAssistantMessage, generateText, LanguageModel } from "koishi-plugin-yesimbot";
+import { AgentAssistantMessage, AgentEntry, AgentMessage, createAssistantMessage, generateText, LanguageModel } from "koishi-plugin-aka-yesimbot";
 
 const FINAL_STYLE_SYSTEM = [
   "你是这个群的群友，负责把 bot 即将发送的最终发言改得更像群友。",

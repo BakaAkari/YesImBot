@@ -1,5 +1,5 @@
 import { h, type Bot, type Logger, type Session } from "koishi";
-import { formatElements, type ChannelContext } from "koishi-plugin-yesimbot";
+import { formatElements, type ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import type { CommandActor, CommandExecutionEvent, InteractiveMode } from "./types.js";
 

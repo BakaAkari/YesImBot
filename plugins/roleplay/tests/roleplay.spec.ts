@@ -1,5 +1,5 @@
 import type { CharacterCardV3 } from "@risuai/ccardlib";
-import { createMemoryStorage, type Agent } from "koishi-plugin-yesimbot";
+import { createMemoryStorage, type Agent } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it } from "vitest";
 
 import { createRoleplayPlugin } from "../src/roleplay.js";

@@ -1,5 +1,5 @@
 import { h, type Bot } from "koishi";
-import type { ChannelContext } from "koishi-plugin-yesimbot";
+import type { ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 export interface StickerSendInput {
   bytes: Uint8Array;

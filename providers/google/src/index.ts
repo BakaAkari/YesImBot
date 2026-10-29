@@ -1,6 +1,6 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { Context, Schema } from "koishi";
-import { type BaseProviderConfig } from "koishi-plugin-yesimbot";
+import { type BaseProviderConfig } from "koishi-plugin-aka-yesimbot";
 
 import enUS from "./locales/en-US.json";
 import zhCN from "./locales/zh-CN.json";

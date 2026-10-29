@@ -1,4 +1,4 @@
-import { generateText, jsonSchema, LanguageModel } from "koishi-plugin-yesimbot";
+import { generateText, jsonSchema, LanguageModel } from "koishi-plugin-aka-yesimbot";
 
 import { modelCacheId, type ModelCache } from "./model-cache.js";
 import { asRecord, isBoundedString } from "./text.js";

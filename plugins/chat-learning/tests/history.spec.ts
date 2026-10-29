@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { createEntry, createUserMessage, type AgentEntry } from "koishi-plugin-yesimbot";
+import { createEntry, createUserMessage, type AgentEntry } from "koishi-plugin-aka-yesimbot";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createChatHistoryStore } from "../src/history.js";

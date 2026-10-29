@@ -1,6 +1,6 @@
 import { Context, Logger, type Bot, type Command, type Session } from "koishi";
-import type { AgentPlugin } from "koishi-plugin-yesimbot";
-import type { ChannelContext } from "koishi-plugin-yesimbot";
+import type { AgentPlugin } from "koishi-plugin-aka-yesimbot";
+import type { ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import { ScheduleScheduler } from "./scheduler.js";
 import { registerScheduleModel, ScheduleStore, type ScheduleScope } from "./store.js";

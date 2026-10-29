@@ -1,5 +1,5 @@
 {
-  "name": "koishi-plugin-yesimbot-schedule",
+  "name": "koishi-plugin-aka-yesimbot-schedule",
   "version": "0.0.1",
   "files": [
     "lib"
@@ -26,12 +26,12 @@
     "cordis": "^3.18.1",
     "cosmokit": "^1.8.1",
     "koishi": "^4.18.10",
-    "koishi-plugin-yesimbot": "workspace:^",
+    "koishi-plugin-aka-yesimbot": "workspace:^",
     "minato": "^3.7.0"
   },
   "peerDependencies": {
     "koishi": "^4.18.10",
-    "koishi-plugin-yesimbot": "workspace:^"
+    "koishi-plugin-aka-yesimbot": "workspace:^"
   },
   "koishi": {
     "description": {

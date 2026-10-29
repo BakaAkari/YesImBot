@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import type { FunctionTool } from "koishi-plugin-yesimbot";
+import type { FunctionTool } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it, vi } from "vitest";
 
 import { createGlobalBrainStore } from "../src/store.js";

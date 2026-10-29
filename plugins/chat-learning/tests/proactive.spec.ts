@@ -1,4 +1,4 @@
-import { createCustomMessage, createEntry, type AgentEntry } from "koishi-plugin-yesimbot";
+import { createCustomMessage, createEntry, type AgentEntry } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it } from "vitest";
 
 import { detectProactiveEvent } from "../src/proactive.js";

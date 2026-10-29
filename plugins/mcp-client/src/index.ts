@@ -9,7 +9,7 @@ import {
   type FunctionTool,
   type ToolResultOutput,
   type ToolSet,
-} from "koishi-plugin-yesimbot";
+} from "koishi-plugin-aka-yesimbot";
 
 import { connectMcpServer } from "./transports.js";
 import type { McpClientConfig, McpClientTransport } from "./types.js";

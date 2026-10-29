@@ -75,7 +75,7 @@ export type ScheduleRow = {
   updatedAt: string;
 };
 
-declare module "koishi-plugin-yesimbot" {
+declare module "koishi-plugin-aka-yesimbot" {
   interface EventMap {
     "schedule.due": { schedule: { id: string; title: string; kind: "once" | "cron"; scheduledFor: string } };
   }

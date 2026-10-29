@@ -1,5 +1,5 @@
-import type { AgentPlugin } from "koishi-plugin-yesimbot";
-import type { ChannelPlugin } from "koishi-plugin-yesimbot";
+import type { AgentPlugin } from "koishi-plugin-aka-yesimbot";
+import type { ChannelPlugin } from "koishi-plugin-aka-yesimbot";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import SchedulePlugin from "../src/index.js";

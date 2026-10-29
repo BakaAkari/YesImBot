@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { ChannelContext } from "koishi-plugin-yesimbot";
+import type { ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import type { PendingMemory } from "../types.js";
 

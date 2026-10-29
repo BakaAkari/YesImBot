@@ -1,4 +1,4 @@
-import type { AgentMessage } from "koishi-plugin-yesimbot";
+import type { AgentMessage } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 vi.mock("koishi", async () => import("@koishijs/core"));
@@ -26,13 +26,13 @@ import { scope } from "./helpers/index.js";
 
 type Input = Message | Event;
 
-declare module "koishi-plugin-yesimbot" {
+declare module "koishi-plugin-aka-yesimbot" {
   interface EventMap {
     "test.variant": { channel: { id: string }; test: { value: number } };
   }
 }
 
-declare module "koishi-plugin-yesimbot" {
+declare module "koishi-plugin-aka-yesimbot" {
   interface EventMap {
     "formatter.variant": { extra: { secret: string } };
   }

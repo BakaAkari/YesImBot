@@ -1,5 +1,5 @@
 import { Universal, type Context } from "koishi";
-import type { EventRecord } from "koishi-plugin-yesimbot";
+import type { EventRecord } from "koishi-plugin-aka-yesimbot";
 
 import { ScheduleStore } from "./store.js";
 import type { Schedule } from "./types.js";

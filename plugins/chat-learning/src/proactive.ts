@@ -1,4 +1,4 @@
-import { AgentEntry, isEvent } from "koishi-plugin-yesimbot";
+import { AgentEntry, isEvent } from "koishi-plugin-aka-yesimbot";
 
 import type { ProactiveEventKind } from "./types.js";
 

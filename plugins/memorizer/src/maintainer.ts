@@ -1,5 +1,5 @@
-import { createAgent, createUserMessage, jsonSchema, type FunctionTool, type LanguageModel, type ToolSet } from "koishi-plugin-yesimbot";
-import type { ChannelContext, MessageRecord } from "koishi-plugin-yesimbot";
+import { createAgent, createUserMessage, jsonSchema, type FunctionTool, type LanguageModel, type ToolSet } from "koishi-plugin-aka-yesimbot";
+import type { ChannelContext, MessageRecord } from "koishi-plugin-aka-yesimbot";
 
 import { EvidenceStore } from "./store/evidence.js";
 import { MemoryStore } from "./store/memory.js";

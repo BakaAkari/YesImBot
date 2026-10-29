@@ -8,7 +8,7 @@ import {
   type WillState,
   type WillEngine,
   TurnResult,
-} from "koishi-plugin-yesimbot";
+} from "koishi-plugin-aka-yesimbot";
 
 import { hasImage, hasQuote, mentionKind } from "./message-context.js";
 import type { PolicyWillingnessConfig } from "./types.js";

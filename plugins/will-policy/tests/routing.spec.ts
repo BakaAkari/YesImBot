@@ -1,5 +1,5 @@
 import type { Universal } from "koishi";
-import { createMessage, type Event, type Message } from "koishi-plugin-yesimbot";
+import { createMessage, type Event, type Message } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("koishi", async () => import("@koishijs/core"));

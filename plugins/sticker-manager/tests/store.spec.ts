@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import type { ChannelContext } from "koishi-plugin-yesimbot";
+import type { ChannelContext } from "koishi-plugin-aka-yesimbot";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { StickerFileStore } from "../src/files.js";

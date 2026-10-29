@@ -1,4 +1,4 @@
-import { createAssistantMessage, createEntry, type AgentEntry, type ArtifactStore } from "koishi-plugin-yesimbot";
+import { createAssistantMessage, createEntry, type AgentEntry, type ArtifactStore } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("koishi", async () => import("@koishijs/core"));

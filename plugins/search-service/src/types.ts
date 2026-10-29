@@ -1,4 +1,4 @@
-import type { FunctionTool } from "koishi-plugin-yesimbot";
+import type { FunctionTool } from "koishi-plugin-aka-yesimbot";
 
 export interface SearchRuntimeConfig {
   defaultLimit: number;

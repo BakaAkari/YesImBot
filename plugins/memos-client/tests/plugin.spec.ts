@@ -1,4 +1,4 @@
-import type { AgentPlugin, ToolSet } from "koishi-plugin-yesimbot";
+import type { AgentPlugin, ToolSet } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it, vi } from "vitest";
 
 import { deriveMemosIdentity } from "../src/identity.js";

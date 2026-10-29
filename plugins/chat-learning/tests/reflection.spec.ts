@@ -2,12 +2,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { createAssistantMessage, createEntry, type AgentEntry } from "koishi-plugin-yesimbot";
+import { createAssistantMessage, createEntry, type AgentEntry } from "koishi-plugin-aka-yesimbot";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ generateText: vi.fn<() => Promise<{ text: string }>>() }));
 
-vi.mock("koishi-plugin-yesimbot", async (importOriginal) => ({ ...(await importOriginal()), generateText: mocks.generateText }));
+vi.mock("koishi-plugin-aka-yesimbot", async (importOriginal) => ({ ...(await importOriginal()), generateText: mocks.generateText }));
 
 import { createReflectionStore, type ReflectionStore } from "../src/reflection-store.js";
 import { buildReflectionHistory, generateReflection, reflectOnSentMessage } from "../src/reflection.js";

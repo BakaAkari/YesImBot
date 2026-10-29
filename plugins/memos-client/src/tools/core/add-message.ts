@@ -1,4 +1,4 @@
-import { jsonSchema, type FunctionTool } from "koishi-plugin-yesimbot";
+import { jsonSchema, type FunctionTool } from "koishi-plugin-aka-yesimbot";
 
 import type { MemosCloudClient } from "../../client.js";
 import type { MemosClientConfig, MemosIdentity } from "../../types.js";

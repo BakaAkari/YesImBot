@@ -1,4 +1,4 @@
-import { generateText, jsonSchema, LanguageModel } from "koishi-plugin-yesimbot";
+import { generateText, jsonSchema, LanguageModel } from "koishi-plugin-aka-yesimbot";
 
 import { buildConversationChains } from "./links.js";
 import { modelCacheId, type ModelCache } from "./model-cache.js";

@@ -1,5 +1,5 @@
 import { h, type Command, type Context, type Session } from "koishi";
-import type { ChannelContext } from "koishi-plugin-yesimbot";
+import type { ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import type { StickerClassifier } from "./classifier.js";
 import { prepareStaticGif } from "./frames.js";

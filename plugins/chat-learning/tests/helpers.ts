@@ -1,5 +1,5 @@
 import type { Element } from "koishi";
-import { createAssistantMessage, createCustomMessage, createEntry, type AgentEntry } from "koishi-plugin-yesimbot";
+import { createAssistantMessage, createCustomMessage, createEntry, type AgentEntry } from "koishi-plugin-aka-yesimbot";
 
 export function humanMessage(
   id: string,

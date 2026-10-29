@@ -1,8 +1,8 @@
 import path from "node:path";
 
 import { Schema, type Bot, type Context } from "koishi";
-import type { AgentPlugin } from "koishi-plugin-yesimbot";
-import type { ChannelContext } from "koishi-plugin-yesimbot";
+import type { AgentPlugin } from "koishi-plugin-aka-yesimbot";
+import type { ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import { runMaintenance } from "./maintainer.js";
 import { createChannelTools } from "./plugin.js";

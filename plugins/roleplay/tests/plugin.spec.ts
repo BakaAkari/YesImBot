@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import type { Context } from "koishi";
-import { createMemoryStorage, type Agent, type AgentPlugin } from "koishi-plugin-yesimbot";
+import { createMemoryStorage, type Agent, type AgentPlugin } from "koishi-plugin-aka-yesimbot";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("koishi", async () => import("@koishijs/core"));

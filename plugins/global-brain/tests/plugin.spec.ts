@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import type { AgentPlugin, StepOptions, ToolSet } from "koishi-plugin-yesimbot";
+import type { AgentPlugin, StepOptions, ToolSet } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it, vi } from "vitest";
 
 import GlobalBrainPlugin from "../src/index.js";

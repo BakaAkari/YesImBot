@@ -8,7 +8,7 @@ import { PanelProvider } from "./panel.js";
 
 export const name = "yesimbot-console";
 
-const PACKAGE_NAME = "koishi-plugin-yesimbot-console";
+const PACKAGE_NAME = "koishi-plugin-aka-yesimbot-console";
 
 export function apply(ctx: Context): void {
   ctx.inject(["console", "yesimbot", "loader"], (ctx) => {

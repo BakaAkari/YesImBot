@@ -5,7 +5,8 @@ import path from "node:path";
 import { DataService } from "@koishijs/console";
 import {} from "@koishijs/loader";
 import { Context } from "koishi";
-import type { AgentMessageOf } from "koishi-plugin-yesimbot";
+import type { AgentMessageOf } from "koishi-plugin-aka-yesimbot";
+import { canonicalPluginKey } from "./plugin-key";
 
 const REFRESH_INTERVAL = 5_000;
 
@@ -458,7 +459,7 @@ function instancePath(key: string): string {
 function normalizePluginKey(key: string): string {
   const bare = key.startsWith("~") ? key.slice(1) : key;
   const instanceIndex = bare.indexOf(":");
-  return instanceIndex < 0 ? bare : bare.slice(0, instanceIndex);
+  return canonicalPluginKey(instanceIndex < 0 ? bare : bare.slice(0, instanceIndex));
 }
 
 async function loadYesImBotPackageRegistry(ctx: Context): Promise<Map<string, YesImBotPackageMeta>> {
@@ -471,7 +472,7 @@ async function loadYesImBotPackageRegistry(ctx: Context): Promise<Map<string, Ye
     const packagePaths = entry.name.startsWith("@") ? await scopedPackagePaths(nodeModules, entry.name) : [path.join(nodeModules, entry.name, "package.json")];
     for (const packagePath of packagePaths) {
       const meta = await readYesImBotPackageMeta(packagePath);
-      if (meta) result.set(meta.configKey, meta);
+      if (meta) result.set(canonicalPluginKey(meta.configKey), meta);
     }
   }
   return result;

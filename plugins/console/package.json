@@ -1,5 +1,5 @@
 {
-  "name": "koishi-plugin-yesimbot-console",
+  "name": "koishi-plugin-aka-yesimbot-console",
   "version": "0.0.1",
   "description": "YesImBot custom Koishi console UI",
   "files": [
@@ -24,13 +24,13 @@
     "@koishijs/loader": "^4.6.9",
     "@koishijs/plugin-console": "^5.30.4",
     "koishi": "^4.18.10",
-    "koishi-plugin-yesimbot": "workspace:^"
+    "koishi-plugin-aka-yesimbot": "workspace:^"
   },
   "peerDependencies": {
     "@koishijs/console": "^5.30.4",
     "@koishijs/plugin-console": "^5.30.4",
     "koishi": "^4.18.10",
-    "koishi-plugin-yesimbot": "workspace:^"
+    "koishi-plugin-aka-yesimbot": "workspace:^"
   },
   "koishi": {
     "description": {

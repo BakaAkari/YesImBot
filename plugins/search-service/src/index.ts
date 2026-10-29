@@ -1,5 +1,5 @@
 import { Context, Logger, Schema, type Bot } from "koishi";
-import type { AgentPlugin, ChannelContext, ToolSet } from "koishi-plugin-yesimbot";
+import type { AgentPlugin, ChannelContext, ToolSet } from "koishi-plugin-aka-yesimbot";
 
 import { createSearXNGBackend, searxngConfigSchema, type SearXNGConfig } from "./backends/searxng";
 import { createTavilyBackend, tavilyConfigSchema, type TavilyConfig } from "./backends/tavily";

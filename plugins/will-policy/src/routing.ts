@@ -1,5 +1,5 @@
 import type { Logger, Universal } from "koishi";
-import { isMessage, type AgentMessageOf, type ChannelInput, type WillDebug, type WillEngine } from "koishi-plugin-yesimbot";
+import { isMessage, type AgentMessageOf, type ChannelInput, type WillDebug, type WillEngine } from "koishi-plugin-aka-yesimbot";
 
 import { hasImage, hasQuote, mentionKind } from "./message-context.js";
 import type { PolicyRoutingConfig } from "./types.js";

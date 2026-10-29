@@ -1,6 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { Context, Schema } from "koishi";
-import { ToolSet, type BaseProviderConfig, type ChannelContext } from "koishi-plugin-yesimbot";
+import { ToolSet, type BaseProviderConfig, type ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import enUS from "./locales/en-US.json";
 import zhCN from "./locales/zh-CN.json";

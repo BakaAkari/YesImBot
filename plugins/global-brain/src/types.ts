@@ -1,5 +1,5 @@
 import type { Universal } from "koishi";
-import type { ChannelContext, EventRecord } from "koishi-plugin-yesimbot";
+import type { ChannelContext, EventRecord } from "koishi-plugin-aka-yesimbot";
 const DIRECT_CHANNEL_TYPE = 1 satisfies Universal.Channel.Type;
 const TEXT_CHANNEL_TYPE = 0 satisfies Universal.Channel.Type;
 export type BrainPostKind = "share" | "question" | "insight";
@@ -70,7 +70,7 @@ export interface GlobalBrainConfig {
   readonly maxBlobBytes: number;
   readonly allowedChannels?: string[];
 }
-declare module "koishi-plugin-yesimbot" {
+declare module "koishi-plugin-aka-yesimbot" {
   interface EventMap {
     "global-brain.immediate": { thread: BrainImmediateShare };
   }

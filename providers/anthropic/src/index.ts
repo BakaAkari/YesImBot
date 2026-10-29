@@ -1,6 +1,6 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { Context, Schema } from "koishi";
-import { defaultSettingsMiddleware, wrapLanguageModel, ToolSet, type BaseProviderConfig } from "koishi-plugin-yesimbot";
+import { defaultSettingsMiddleware, wrapLanguageModel, ToolSet, type BaseProviderConfig } from "koishi-plugin-aka-yesimbot";
 
 import enUS from "./locales/en-US.json";
 import zhCN from "./locales/zh-CN.json";

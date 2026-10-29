@@ -1,4 +1,4 @@
-import type { ChannelContext, MessageRecord } from "koishi-plugin-yesimbot";
+import type { ChannelContext, MessageRecord } from "koishi-plugin-aka-yesimbot";
 
 /** Per-type decay multiplier applied to halfLifeDays. Higher = slower decay. */
 export const TYPE_DECAY_FACTOR: Record<MemoryType, number> = {

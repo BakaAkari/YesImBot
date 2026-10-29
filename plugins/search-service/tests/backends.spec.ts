@@ -1,4 +1,4 @@
-import type { AgentPlugin } from "koishi-plugin-yesimbot";
+import type { AgentPlugin } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it, vi } from "vitest";
 
 import SearchService from "../src/index.js";

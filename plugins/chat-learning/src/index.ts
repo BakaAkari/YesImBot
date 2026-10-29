@@ -15,7 +15,7 @@ import {
   StepOptions,
   type ChannelContext,
   type DeliveredPayload,
-} from "koishi-plugin-yesimbot";
+} from "koishi-plugin-aka-yesimbot";
 
 import { buildLocalChainPatterns } from "./chains.js";
 import { collectTurns, segmentTurns } from "./collector.js";

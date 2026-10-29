@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { DataService } from "@koishijs/console";
 import { Context, Logger, Schema, Time, type Field, type Types } from "koishi";
-import type { ModelUsageEvent } from "koishi-plugin-yesimbot";
+import type { ModelUsageEvent } from "koishi-plugin-aka-yesimbot";
 
 import { JsonlUsageHistory } from "./jsonl.js";
 import { normalizeLanguageUsage } from "./middleware.js";
@@ -23,7 +23,7 @@ export const Config: Schema<UsageConfig> = Schema.object({
 
 const USAGE_TABLE = "yesimbot.usage";
 
-const PACKAGE_NAME = "koishi-plugin-yesimbot-usage";
+const PACKAGE_NAME = "koishi-plugin-aka-yesimbot-usage";
 
 const USAGE_FIELDS = {
   date: "integer",

@@ -440,15 +440,11 @@ function toPosix(value) {
 }
 
 function isManagedPluginName(name) {
-  return name === "koishi-plugin-yesimbot" || name.startsWith("koishi-plugin-yesimbot-") || name.startsWith("@yesimbot/koishi-plugin-provider-");
+  return name === "koishi-plugin-aka-yesimbot" || name.startsWith("koishi-plugin-aka-yesimbot-");
 }
 
 function configKeyToPackageName(key) {
-  if (key === "yesimbot") return "koishi-plugin-yesimbot";
-  if (key.startsWith("@yesimbot/provider-")) {
-    return `@yesimbot/koishi-plugin-provider-${key.slice("@yesimbot/provider-".length)}`;
-  }
-  if (key.startsWith("yesimbot-")) return `koishi-plugin-${key}`;
+  if (key === "aka-yesimbot" || key.startsWith("aka-yesimbot-")) return `koishi-plugin-${key}`;
   return null;
 }
 
@@ -466,12 +462,12 @@ function belongsToYesImBotRoot(name) {
 }
 
 function packagePathInYesImBot(name) {
-  if (name === "koishi-plugin-yesimbot") return "core";
-  if (name.startsWith("@yesimbot/koishi-plugin-provider-")) {
-    return `providers/${name.slice("@yesimbot/koishi-plugin-provider-".length)}`;
+  if (name === "koishi-plugin-aka-yesimbot") return "core";
+  if (name.startsWith("koishi-plugin-aka-yesimbot-provider-")) {
+    return `providers/${name.slice("koishi-plugin-aka-yesimbot-provider-".length)}`;
   }
-  if (name.startsWith("koishi-plugin-yesimbot-")) {
-    return `plugins/${name.slice("koishi-plugin-yesimbot-".length)}`;
+  if (name.startsWith("koishi-plugin-aka-yesimbot-")) {
+    return `plugins/${name.slice("koishi-plugin-aka-yesimbot-".length)}`;
   }
   if (name.startsWith("koishi-plugin-")) {
     return `plugins/${name.slice("koishi-plugin-".length)}`;
@@ -578,8 +574,8 @@ function updateKoishi(plugins) {
   for (const plugin of plugins) {
     const key = configKey(plugin.name);
     if (!key) continue;
-    if (key === "yesimbot") {
-      if (!hasEntry("yesimbot")) normalized.yesimbot = {};
+    if (key === "aka-yesimbot") {
+      if (!hasEntry("aka-yesimbot")) normalized["aka-yesimbot"] = {};
     } else if (!hasEntry(key)) {
       normalized[`~${key}`] = {};
     }

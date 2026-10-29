@@ -1,5 +1,5 @@
 import type { Context } from "koishi";
-import { EmbeddingModel, embedMany } from "koishi-plugin-yesimbot";
+import { EmbeddingModel, embedMany } from "koishi-plugin-aka-yesimbot";
 
 import type { ModelCache } from "./model-cache.js";
 import type { ChatLearningConfig, InitiationPattern, ResponsePattern } from "./types.js";

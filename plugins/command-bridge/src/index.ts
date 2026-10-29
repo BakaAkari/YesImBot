@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 
 import { Context, Logger, Schema, type Bot, type Element } from "koishi";
-import { jsonSchema, type AgentPlugin, type ToolResultOutput, type ToolSet } from "koishi-plugin-yesimbot";
-import type { ChannelContext, ChannelResources } from "koishi-plugin-yesimbot";
+import { jsonSchema, type AgentPlugin, type ToolResultOutput, type ToolSet } from "koishi-plugin-aka-yesimbot";
+import type { ChannelContext, ChannelResources } from "koishi-plugin-aka-yesimbot";
 
 import { collectCommandCatalog, filterCommandCatalog, formatCommandCatalog, formatCommandHelp } from "./catalog.js";
 import { CommandExecution } from "./execution.js";

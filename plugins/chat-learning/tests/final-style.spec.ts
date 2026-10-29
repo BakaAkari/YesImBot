@@ -1,9 +1,9 @@
-import { createAssistantMessage, createEntry, createUserMessage } from "koishi-plugin-yesimbot";
+import { createAssistantMessage, createEntry, createUserMessage } from "koishi-plugin-aka-yesimbot";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ generateText: vi.fn<() => Promise<{ text: string }>>() }));
 
-vi.mock("koishi-plugin-yesimbot", async (importOriginal) => ({ ...(await importOriginal()), generateText: mocks.generateText }));
+vi.mock("koishi-plugin-aka-yesimbot", async (importOriginal) => ({ ...(await importOriginal()), generateText: mocks.generateText }));
 
 import { buildFinalStylePrompt, rewriteAssistantEntries } from "../src/final-style.js";
 

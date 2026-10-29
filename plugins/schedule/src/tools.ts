@@ -1,4 +1,4 @@
-import { jsonSchema, type FunctionTool, type ToolSet } from "koishi-plugin-yesimbot";
+import { jsonSchema, type FunctionTool, type ToolSet } from "koishi-plugin-aka-yesimbot";
 
 import type { ScheduleStore, ScheduleScope } from "./store.js";
 import type { Schedule, ScheduleCreateInput, ScheduleProjection, ScheduleUpdateInput } from "./types.js";

@@ -1,7 +1,7 @@
 import { appendFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { AgentEntry } from "koishi-plugin-yesimbot";
+import { AgentEntry } from "koishi-plugin-aka-yesimbot";
 
 export interface ChatHistoryStore {
   init(): Promise<void>;

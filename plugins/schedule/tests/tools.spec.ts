@@ -1,5 +1,5 @@
 import Ajv from "ajv";
-import type { FunctionTool, ToolSet } from "koishi-plugin-yesimbot";
+import type { FunctionTool, ToolSet } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it, vi, type Mock } from "vitest";
 
 import type { ScheduleStore, ScheduleScope } from "../src/store.js";

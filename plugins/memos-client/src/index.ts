@@ -1,5 +1,5 @@
 import { Schema, Universal, type Bot, type Context, type Logger } from "koishi";
-import { isMessage, type AgentMessage, type AgentPlugin, type ChannelContext } from "koishi-plugin-yesimbot";
+import { isMessage, type AgentMessage, type AgentPlugin, type ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import { MemosCloudClient } from "./client.js";
 import { memosConfigSchema } from "./config.js";

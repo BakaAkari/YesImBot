@@ -1,5 +1,5 @@
 {
-  "name": "@yesimbot/koishi-plugin-provider-google",
+  "name": "koishi-plugin-aka-yesimbot-provider-google",
   "version": "0.0.1",
   "description": "YesImBot Google model provider plugin",
   "bugs": {
@@ -38,11 +38,11 @@
   },
   "devDependencies": {
     "koishi": "^4.18.10",
-    "koishi-plugin-yesimbot": "workspace:^"
+    "koishi-plugin-aka-yesimbot": "workspace:^"
   },
   "peerDependencies": {
     "koishi": "^4.18.10",
-    "koishi-plugin-yesimbot": "workspace:^"
+    "koishi-plugin-aka-yesimbot": "workspace:^"
   },
   "koishi": {
     "description": {

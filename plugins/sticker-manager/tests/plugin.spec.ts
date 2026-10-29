@@ -1,5 +1,5 @@
 /* eslint-disable vitest/require-mock-type-parameters */
-import type { AgentPlugin, ChannelContext } from "koishi-plugin-yesimbot";
+import type { AgentPlugin, ChannelContext } from "koishi-plugin-aka-yesimbot";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import StickerManagerPlugin from "../src/index.js";

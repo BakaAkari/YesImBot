@@ -1,7 +1,7 @@
 import type { ReadableStream } from "node:stream/web";
 
 import { Context, Logger, Schema, type Bot } from "koishi";
-import { jsonSchema, type AgentPlugin, type ChannelResources, type ChannelContext, type FunctionTool, type ToolSet } from "koishi-plugin-yesimbot";
+import { jsonSchema, type AgentPlugin, type ChannelResources, type ChannelContext, type FunctionTool, type ToolSet } from "koishi-plugin-aka-yesimbot";
 
 import { projectAnimatedImages } from "./animated-image.js";
 import { createForwardReader, type ForwardImageRequest, type ForwardResult, type ForwardToolInput } from "./forward.js";

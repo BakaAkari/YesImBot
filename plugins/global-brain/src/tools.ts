@@ -1,5 +1,5 @@
-import { jsonSchema, type FunctionTool, type ToolSet } from "koishi-plugin-yesimbot";
-import type { ArtifactStore, AssetStore, ChannelContext } from "koishi-plugin-yesimbot";
+import { jsonSchema, type FunctionTool, type ToolSet } from "koishi-plugin-aka-yesimbot";
+import type { ArtifactStore, AssetStore, ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import type { GlobalBrainStore } from "./store.js";
 import { BrainStoreError } from "./store.js";

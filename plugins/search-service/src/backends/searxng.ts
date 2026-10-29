@@ -1,6 +1,6 @@
 import type { Context, Logger } from "koishi";
 import { Schema } from "koishi";
-import { jsonSchema, type FunctionTool } from "koishi-plugin-yesimbot";
+import { jsonSchema, type FunctionTool } from "koishi-plugin-aka-yesimbot";
 
 import type { SearchBackend, SearchRuntimeConfig, WebSearchOutput } from "../types.js";
 import { clampLimit, compileBlacklist, dedupeByUrl, filterBlockedResults } from "../utils.js";

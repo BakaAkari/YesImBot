@@ -1,4 +1,4 @@
-import type { AgentPlugin, ChannelPlugin, Tool, ToolSet } from "koishi-plugin-yesimbot";
+import type { AgentPlugin, ChannelPlugin, Tool, ToolSet } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("koishi", async () => import("@koishijs/core"));

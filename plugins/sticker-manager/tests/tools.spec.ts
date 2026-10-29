@@ -1,5 +1,5 @@
 /* eslint-disable vitest/require-mock-type-parameters */
-import type { AssetStore, ChannelContext, ToolSet } from "koishi-plugin-yesimbot";
+import type { AssetStore, ChannelContext, ToolSet } from "koishi-plugin-aka-yesimbot";
 import { PNG } from "pngjs";
 import { describe, expect, it, vi } from "vitest";
 

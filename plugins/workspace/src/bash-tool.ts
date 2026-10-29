@@ -1,5 +1,5 @@
 import type { CommandResult, Sandbox } from "bash-tool";
-import type { Tool, ToolSet } from "koishi-plugin-yesimbot";
+import type { Tool, ToolSet } from "koishi-plugin-aka-yesimbot";
 
 import { createEditTool } from "./edit-tool";
 

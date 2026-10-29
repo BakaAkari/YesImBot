@@ -4,7 +4,8 @@ import path from "node:path";
 import { DataService } from "@koishijs/console";
 import {} from "@koishijs/loader";
 import { Context } from "koishi";
-import { formatElements } from "koishi-plugin-yesimbot";
+import { formatElements } from "koishi-plugin-aka-yesimbot";
+import { canonicalPluginKey } from "./plugin-key";
 
 const REFRESH_INTERVAL = 10_000;
 const MAX_SESSION_ENTRIES = 3_000;
@@ -729,7 +730,7 @@ function flattenPluginConfig(plugins: Record<string, unknown>): Record<string, u
 function normalizePluginKey(key: string): string {
   const bare = key.startsWith("~") ? key.slice(1) : key;
   const instanceIndex = bare.indexOf(":");
-  return instanceIndex < 0 ? bare : bare.slice(0, instanceIndex);
+  return canonicalPluginKey(instanceIndex < 0 ? bare : bare.slice(0, instanceIndex));
 }
 
 function safeJoin(root: string, segment: string): string | undefined {

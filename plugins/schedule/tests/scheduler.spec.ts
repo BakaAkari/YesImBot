@@ -1,7 +1,7 @@
 import { Context } from "cordis";
 import { clone, makeArray, pick } from "cosmokit";
 import { Universal } from "koishi";
-import type { EventRecord } from "koishi-plugin-yesimbot";
+import type { EventRecord } from "koishi-plugin-aka-yesimbot";
 import { Database, Driver, Eval, executeEval, executeQuery, executeSort, executeUpdate, Field, RuntimeError, Selection } from "minato";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 

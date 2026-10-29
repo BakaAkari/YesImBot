@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { MessageRecord } from "koishi-plugin-yesimbot";
+import type { MessageRecord } from "koishi-plugin-aka-yesimbot";
 
 import type { MemoryEvidence } from "../types.js";
 

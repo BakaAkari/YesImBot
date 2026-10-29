@@ -1,5 +1,5 @@
-import { embed, jsonSchema, type EmbeddingModel, type FunctionTool, type ToolSet } from "koishi-plugin-yesimbot";
-import type { ChannelContext, ConversationReadOptions, MessageRecord } from "koishi-plugin-yesimbot";
+import { embed, jsonSchema, type EmbeddingModel, type FunctionTool, type ToolSet } from "koishi-plugin-aka-yesimbot";
+import type { ChannelContext, ConversationReadOptions, MessageRecord } from "koishi-plugin-aka-yesimbot";
 
 import { MemoryStore } from "./store/memory.js";
 import { PendingStore } from "./store/pending.js";

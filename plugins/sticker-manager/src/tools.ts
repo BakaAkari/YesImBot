@@ -1,4 +1,4 @@
-import { jsonSchema, type AssetStore, type ChannelContext, type FunctionTool, type ToolSet } from "koishi-plugin-yesimbot";
+import { jsonSchema, type AssetStore, type ChannelContext, type FunctionTool, type ToolSet } from "koishi-plugin-aka-yesimbot";
 
 import type { StickerClassifier } from "./classifier.js";
 import { detectImageMediaType, sha256Hex } from "./files.js";

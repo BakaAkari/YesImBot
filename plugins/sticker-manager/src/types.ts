@@ -1,4 +1,4 @@
-import type { ChannelContext } from "koishi-plugin-yesimbot";
+import type { ChannelContext } from "koishi-plugin-aka-yesimbot";
 export type StickerScopeMode = "global" | "channel";
 
 export type StickerSourceKind = "steal" | "import" | "v3" | "migrate";

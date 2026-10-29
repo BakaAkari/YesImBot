@@ -1,5 +1,5 @@
 import { Context, Logger, type Bot } from "koishi";
-import type { AgentPlugin, ChannelResources, ChannelContext } from "koishi-plugin-yesimbot";
+import type { AgentPlugin, ChannelResources, ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import { ModelStickerClassifier } from "./classifier.js";
 import { registerStickerCommands } from "./commands.js";

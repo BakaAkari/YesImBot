@@ -1,4 +1,4 @@
-import { AgentEntry, generateText, LanguageModel } from "koishi-plugin-yesimbot";
+import { AgentEntry, generateText, LanguageModel } from "koishi-plugin-aka-yesimbot";
 
 import { escapePromptText } from "./projector.js";
 import type { ReflectionRecord, ReflectionStore } from "./reflection-store.js";

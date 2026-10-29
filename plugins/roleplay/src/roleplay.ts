@@ -1,5 +1,5 @@
 import type { CharacterCardV3 } from "@risuai/ccardlib";
-import { createAssistantMessage, createEntry, type AgentPlugin } from "koishi-plugin-yesimbot";
+import { createAssistantMessage, createEntry, type AgentPlugin } from "koishi-plugin-aka-yesimbot";
 
 import type { CBSContext } from "./cbs.js";
 import { renderCBS } from "./cbs.js";

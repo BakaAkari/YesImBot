@@ -1,5 +1,5 @@
 {
-  "name": "koishi-plugin-yesimbot-quota",
+  "name": "koishi-plugin-aka-yesimbot-quota",
   "version": "0.0.1",
   "files": [
     "lib"
@@ -20,11 +20,11 @@
   },
   "devDependencies": {
     "koishi": "^4.18.10",
-    "koishi-plugin-yesimbot": "workspace:^"
+    "koishi-plugin-aka-yesimbot": "workspace:^"
   },
   "peerDependencies": {
     "koishi": "^4.18.10",
-    "koishi-plugin-yesimbot": "workspace:^"
+    "koishi-plugin-aka-yesimbot": "workspace:^"
   },
   "koishi": {
     "description": {

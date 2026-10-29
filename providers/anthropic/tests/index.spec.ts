@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
-import { jsonSchema, streamText, tool } from "koishi-plugin-yesimbot";
+import { jsonSchema, streamText, tool } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it, vi } from "vitest";
 vi.mock("koishi", async () => import("@koishijs/core"));
 

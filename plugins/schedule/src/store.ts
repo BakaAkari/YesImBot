@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import type { Context, Field, Types } from "koishi";
-import type { ChannelContext } from "koishi-plugin-yesimbot";
+import type { ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import {
   MAX_ENABLED_SCHEDULES,

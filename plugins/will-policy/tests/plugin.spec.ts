@@ -1,4 +1,4 @@
-import type { WillPlugin } from "koishi-plugin-yesimbot";
+import type { WillPlugin } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("koishi", async () => import("@koishijs/core"));

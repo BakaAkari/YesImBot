@@ -1,4 +1,4 @@
-import type { ChannelContext, EventMap } from "koishi-plugin-yesimbot";
+import type { ChannelContext, EventMap } from "koishi-plugin-aka-yesimbot";
 import { describe, expect, it } from "vitest";
 
 import type { Schedule, ScheduleCreateInput, ScheduleLastResult, ScheduleState, ScheduleUpdateInput } from "../src/types.js";

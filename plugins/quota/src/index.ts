@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { Schema, Time } from "koishi";
 import type { Context, Logger, Session } from "koishi";
-import type { AgentPlugin, ChannelContext, ModelUsageEvent, StepOptions } from "koishi-plugin-yesimbot";
+import type { AgentPlugin, ChannelContext, ModelUsageEvent, StepOptions } from "koishi-plugin-aka-yesimbot";
 
 export const Config: Schema<Config> = Schema.object({
   quotaStorageDir: Schema.string().default("data/yesimbot/quota").description("按会话额度记录与动态覆盖的存储目录"),

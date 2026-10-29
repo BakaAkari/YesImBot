@@ -3,7 +3,7 @@ import path from "node:path";
 import { URL } from "node:url";
 
 import { Context, Logger, Schema } from "koishi";
-import type { AgentPlugin, ChannelResources, ChannelContext, ResourceReader } from "koishi-plugin-yesimbot";
+import type { AgentPlugin, ChannelResources, ChannelContext, ResourceReader } from "koishi-plugin-aka-yesimbot";
 
 import { createBashToolSet } from "./bash-tool";
 import { normalizeMounts, type NormalizedMountSpec } from "./mounts";

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { Context, Logger, Schema, type Command, type Session } from "koishi";
-import type { ChannelContext, WillEngine, WillPlugin } from "koishi-plugin-yesimbot";
+import type { ChannelContext, WillEngine, WillPlugin } from "koishi-plugin-aka-yesimbot";
 
 import { resolvePolicy } from "./policy.js";
 import { PolicyRoutingEngine } from "./routing.js";

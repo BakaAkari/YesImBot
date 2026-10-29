@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { Context, Logger, Schema, type Bot } from "koishi";
-import type { AgentPlugin, ChannelResources, ChannelContext } from "koishi-plugin-yesimbot";
+import type { AgentPlugin, ChannelResources, ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import { formatBrainDigest } from "./digest.js";
 import { formatBrainPrompt } from "./prompt.js";

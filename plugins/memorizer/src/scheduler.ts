@@ -1,4 +1,4 @@
-import type { ChannelContext } from "koishi-plugin-yesimbot";
+import type { ChannelContext } from "koishi-plugin-aka-yesimbot";
 
 import type { PendingStore } from "./store/pending.js";
 import type { PendingMemory } from "./types.js";
