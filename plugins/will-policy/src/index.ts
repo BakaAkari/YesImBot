@@ -56,6 +56,7 @@ export const WillPolicyConfigSchema: Schema<WillPolicyConfig> = Schema.intersect
         mentionForce: Schema.boolean().default(false).description("被 @ 时强制触发"),
         quoteForce: Schema.boolean().default(false).description("引用时强制触发"),
         directForce: Schema.boolean().default(false).description("私聊强制触发"),
+        ignoredUserIds: Schema.array(Schema.string()).default([]).description("忽略的发送者 ID：不累计意愿值、不触发回复"),
       })
         .required()
         .description("意愿值引擎配置；仅在 engine 为 willingness 时生效"),

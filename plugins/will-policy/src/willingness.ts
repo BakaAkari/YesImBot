@@ -31,6 +31,9 @@ export class PolicyWillingnessEngine implements WillEngine {
     if (!isMessage(input)) {
       return isPokeEvent(input) ? this.decidePoke(input) : "wait";
     }
+    if (this.config.ignoredUserIds.includes(input.data.user.id)) {
+      return "wait";
+    }
 
     const now = Date.now();
     const decayed =

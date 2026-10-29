@@ -30,6 +30,9 @@ export default class GlobalBrainPlugin {
       .min(1)
       .default(5 * 1024 * 1024)
       .description("asset/artifact 物化到全局脑 blob 的最大字节数"),
+    allowedChannels: Schema.array(Schema.string())
+      .default([])
+      .description("仅允许参与全局脑的频道 ID 白名单（按 channelId 匹配）；留空 = 全部频道参与"),
   });
 
   public readonly ctx: Context;
@@ -37,6 +40,7 @@ export default class GlobalBrainPlugin {
   public readonly logger: Logger;
 
   private readonly scopes = new Map<string, ActiveScope>();
+  private readonly allowedChannels: Set<string> | undefined;
   private store: GlobalBrainStore | undefined;
   private dispose: (() => unknown) | undefined;
 
@@ -44,6 +48,9 @@ export default class GlobalBrainPlugin {
     this.ctx = ctx;
     this.config = config;
     this.logger = ctx.logger("yesimbot.global-brain");
+    this.allowedChannels = config.allowedChannels && config.allowedChannels.length > 0
+      ? new Set(config.allowedChannels)
+      : undefined;
     ctx.on("ready", this.start.bind(this));
     ctx.on("dispose", this.stop.bind(this));
   }
@@ -72,9 +79,14 @@ export default class GlobalBrainPlugin {
   }
 
   public async setup(scope: ChannelContext, bot: Bot): Promise<AgentPlugin | null> {
+    if (!this.isAllowed(scope)) return null;
     this.scopes.set(scopeKey(scope), { scope, selfId: bot.selfId });
     const resources = await this.ctx.yesimbot.resource.get(scope);
     return this.createAgentPlugin(scope, resources);
+  }
+
+  private isAllowed(scope: ChannelContext): boolean {
+    return this.allowedChannels === undefined || this.allowedChannels.has(scope.channelId);
   }
 
   private createAgentPlugin(scope: ChannelContext, resources: ChannelResources): AgentPlugin | null {

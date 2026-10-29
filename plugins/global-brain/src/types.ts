@@ -68,6 +68,7 @@ export interface GlobalBrainConfig {
   readonly maxDigestReplies: number;
   readonly maxDigestContentLength: number;
   readonly maxBlobBytes: number;
+  readonly allowedChannels?: string[];
 }
 declare module "koishi-plugin-yesimbot" {
   interface EventMap {

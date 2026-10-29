@@ -231,7 +231,7 @@ export function createDescribeImageTool(model: LanguageModel, resources: Channel
       try {
         const result = await generateText({
           model,
-          temperature: 0.2,
+          temperature: 1,
           abortSignal: execution.abortSignal,
           messages: [
             {
@@ -295,6 +295,9 @@ ${
 `
     : ""
 }
+# 表情回复
+想回「草」「绝了」「好家伙」这类极短反应时，优先发一张收藏的表情包：先用 sticker_search 按分类或关键词找（吐槽、无语、破防、笑死这类搜索都有货），找到就用 sticker_send 发出。表情包本身就是完整的回复，是群友的第一反应。
+
 # 返回值
 成功返回 {ok:true, messageIds, count}。
 失败返回 {ok:false, error, sent, failedAt}：sent 是已经成功发出的消息 ID，failedAt 是出错的 messages 下标。发送遇错会立即停止，failedAt 及其之后的消息都没有发出。必须检查 ok，不要假设发送成功。

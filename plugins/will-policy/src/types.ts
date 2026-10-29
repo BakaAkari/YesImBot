@@ -34,6 +34,7 @@ export interface PolicyWillingnessConfig {
   readonly mentionForce: boolean;
   readonly quoteForce: boolean;
   readonly directForce: boolean;
+  readonly ignoredUserIds: string[];
 }
 
 export interface WillPolicyConfig {
@@ -71,5 +72,6 @@ export function defaultWillingnessConfig(): PolicyWillingnessConfig {
     mentionForce: false,
     quoteForce: false,
     directForce: false,
+    ignoredUserIds: [],
   };
 }
