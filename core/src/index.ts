@@ -7,7 +7,7 @@ declare module "koishi" {
 }
 
 export * from "@yesimagent/core";
-export type { ChannelInput, ChannelPlugin, WillDebug, WillEngine, WillPlugin, WillState } from "./agents/index.js";
+export type { ChannelInput, ChannelPlugin, WillDebug, WillEngine, WillObservation, WillPlugin, WillRuntimeApi, WillState, WillWakeOptions } from "./agents/index.js";
 export type { ChannelContext, ChannelKey } from "./channels/index.js";
 export type { ConversationReadOptions } from "./conversations/index.js";
 export * from "./messages/index.js";

@@ -311,6 +311,91 @@ describe("ChannelRuntime scheduling", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+  it("reports the message IDs send_message delivered to observe", async () => {
+    state.decide.mockResolvedValue("trigger");
+    state.run.mockReturnValue(
+      (async function* () {
+        yield { type: "turn.start", turnId: "turn-1" };
+        yield { type: "tool.done", turnId: "turn-1", toolName: "send_message", toolCallId: "c1", result: { ok: true, messageIds: ["m1", "m2"], count: 2 } };
+        yield { type: "tool.done", turnId: "turn-1", toolName: "send_message", toolCallId: "c2", result: { ok: false, sent: ["m3"], failedAt: 1 } };
+        yield { type: "turn.done", turnId: "turn-1" };
+      })(),
+    );
+    const { value, root } = await runtime();
+    try {
+      const result = await value.handle(event);
+      if (result.kind === "run") await result.done;
+      expect(state.observe).toHaveBeenCalledWith(expect.objectContaining({ turnId: "turn-1", sentMessageIds: ["m1", "m2", "m3"] }));
+    } finally {
+      await value.stop();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reports no sent messages when a passive turn stays silent", async () => {
+    state.decide.mockResolvedValue("trigger");
+    state.run.mockReturnValue(
+      (async function* () {
+        yield { type: "turn.start", turnId: "turn-1" };
+        yield { type: "turn.done", turnId: "turn-1" };
+      })(),
+    );
+    const { value, root } = await runtime();
+    try {
+      const result = await value.handle(event);
+      if (result.kind === "run") await result.done;
+      expect(state.observe).toHaveBeenCalledWith(expect.objectContaining({ sentMessageIds: [] }));
+    } finally {
+      await value.stop();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("lets the Will engine wake a passive turn on the latest input", async () => {
+    let api: { wake(options: { reason: string }): Promise<boolean> } | undefined;
+    const root = await mkdtemp(path.join(tmpdir(), "yesimbot-runtime-"));
+    const channel = new Channel({ type: "guild", platform: "test", channelId: "room", guildId: "room" }, root);
+    await channel.conversation.init();
+    const value = new ChannelRuntime(new Context(), {
+      channel,
+      bot: { selfId: "bot", sendMessage: vi.fn() } as never,
+      will: { decide: state.decide, observe: state.observe, attach: (value: typeof api) => (api = value) } as never,
+      model: {} as never,
+      imageOutputSupported: false,
+      config,
+      plugins: [],
+    });
+    await value.init();
+    try {
+      expect(api).toBeDefined();
+      await expect(api!.wake({ reason: "settled" })).resolves.toBe(false);
+      expect(state.run).not.toHaveBeenCalled();
+
+      await value.handle(event);
+      expect(state.run).not.toHaveBeenCalled();
+      state.run.mockReturnValue(
+        (async function* () {
+          yield { type: "turn.start", turnId: "turn-1" };
+          yield { type: "turn.done", turnId: "turn-1" };
+        })(),
+      );
+      await expect(api!.wake({ reason: "settled" })).resolves.toBe(true);
+      expect(state.run).toHaveBeenCalledOnce();
+      await vi.waitFor(() => expect(state.observe).toHaveBeenCalledWith(expect.objectContaining({ turnId: "turn-1" })));
+
+      state.active = "turn-2";
+      await expect(api!.wake({ reason: "settled" })).resolves.toBe(false);
+      expect(state.run).toHaveBeenCalledOnce();
+
+      const entries = (await channel.conversation.storage.read()) as readonly { data?: { decision?: string; wake?: string } }[];
+      expect(entries.some((entry) => entry.data?.decision === "trigger" && entry.data.wake === "settled")).toBe(true);
+    } finally {
+      state.active = null;
+      await value.stop();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("returns wait without running the Agent when passive Will waits", async () => {
     const { value, root } = await runtime();
     try {

@@ -21,7 +21,7 @@ import {
   type DeliveredNotice,
   type SendFailedNotice,
 } from "../agents/tools.js";
-import type { WillDebug, WillEngine, WillState } from "../agents/will.js";
+import type { WillDebug, WillEngine, WillState, WillWakeOptions } from "../agents/will.js";
 import { deriveChannelKey, type Channel, type ChannelContext } from "../channels/index.js";
 import type { Config } from "../config.js";
 import { lastCompactEntryIndex } from "../conversations/index.js";
@@ -43,6 +43,8 @@ export interface WillDecisionEntryData {
   eventId: string;
   decision: "wait" | "trigger";
   debug?: WillDebug;
+  /** Set when the engine triggered the turn later through `wake` rather than from `decide`. */
+  wake?: string;
 }
 
 declare module "@yesimagent/core" {
@@ -128,6 +130,8 @@ export class ChannelRuntime {
   private stopTask: Promise<void> | undefined;
   private idleTimer: NodeJS.Timeout | undefined;
   private responseCompactionPending = false;
+  /** The newest input `handle` persisted; `wake` starts its turn from here. */
+  private latestInput: ChannelInput | undefined;
   /** Turns started by a silent post; `send_message` is blocked for them. */
   private readonly silentTurns = new Set<string>();
   /** Tool calls seen in the current step, so `onStepFinish` can apply the old `terminal` rule. */
@@ -184,11 +188,13 @@ export class ChannelRuntime {
   public async init(): Promise<void> {
     this.persona = await readPersona(this.options.config.basePath, this.logger);
     await this.agent.init();
+    this.options.will.attach?.({ wake: (options) => this.wake(options) });
   }
 
   public handle(record: MessageRecord | EventRecord): Promise<RuntimeResult> {
     return this.schedule(async () => {
       const input = await this.persist(record);
+      this.latestInput = input;
       await this.archiveIfOversize();
       const decision = await this.options.will.decide(input, this.state());
       try {
@@ -227,6 +233,27 @@ export class ChannelRuntime {
 
   public wait(): Promise<void> {
     return this.agent.wait();
+  }
+
+  /** Lets the Will engine start a passive turn after `decide` already returned `wait`, e.g. once a burst has settled. */
+  private wake(options: WillWakeOptions): Promise<boolean> {
+    return this.schedule(async () => {
+      const input = this.latestInput;
+      if (this.stopped || !input || this.agent.getActiveTurnId() !== null) {
+        this.logger.debug("runtime.wake.skipped", { reason: options.reason, stopped: this.stopped, hasInput: input !== undefined });
+        return false;
+      }
+      try {
+        await this.options.channel.conversation.storage.append(
+          createEntry("willDecision", { eventId: input.id, decision: "trigger", debug: options.debug ?? this.options.will.debug?.(), wake: options.reason }),
+        );
+      } catch (error) {
+        this.logger.warn("runtime.will_decision_persist_failed", { eventId: input.id, error });
+      }
+      const result = this.start(input, true, "join");
+      this.logger.debug("runtime.wake", { eventId: input.id, reason: options.reason, result: result.kind });
+      return result.kind === "run";
+    });
   }
 
   public compact(reason: "auto" | "idle" | "manual"): Promise<unknown> {
@@ -319,6 +346,7 @@ export class ChannelRuntime {
 
   private async consume(stream: AsyncIterable<AgentEvent>, passive: boolean, silent: boolean): Promise<void> {
     let delivered = false;
+    const sentMessageIds: string[] = [];
     let completed = false;
     let turnId = "";
     try {
@@ -347,7 +375,13 @@ export class ChannelRuntime {
           continue;
         }
         if (event.type === "tool.done") {
-          if (event.toolName === "send_message" && (event.result as { ok?: boolean } | undefined)?.ok === true) delivered = true;
+          if (event.toolName === "send_message") {
+            const result = event.result as { ok?: boolean; messageIds?: unknown; sent?: unknown } | undefined;
+            if (result?.ok === true) delivered = true;
+            // A failed send may still have delivered its first segments; those count as said.
+            const ids = result?.ok === true ? result.messageIds : result?.sent;
+            if (Array.isArray(ids)) sentMessageIds.push(...ids.filter((id): id is string => typeof id === "string"));
+          }
           this.logger.debug("runtime.tool.done", { turnId: event.turnId, toolName: event.toolName, toolCallId: event.toolCallId });
           continue;
         }
@@ -378,7 +412,7 @@ export class ChannelRuntime {
         }
       }
       completed = true;
-      if (passive) await this.options.will.observe?.({ turnId, status: "done", messages: [] });
+      if (passive) await this.options.will.observe?.({ turnId, status: "done", messages: [], sentMessageIds });
     } catch (error) {
       this.logger.warn("runtime.turn.consume_failed", { turnId, error });
     } finally {

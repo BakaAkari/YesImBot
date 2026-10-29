@@ -72,4 +72,4 @@ export class Agents {
   }
 }
 
-export type { ChannelInput, WillDebug, WillEngine, WillPlugin, WillState } from "./will.js";
+export type { ChannelInput, WillDebug, WillEngine, WillObservation, WillPlugin, WillRuntimeApi, WillState, WillWakeOptions } from "./will.js";

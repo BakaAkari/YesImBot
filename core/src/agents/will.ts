@@ -27,15 +27,40 @@ export interface WillState {
 
 export interface WillEngine {
   decide(input: ChannelInput, state: WillState): Awaitable<"wait" | "trigger">;
-  observe?(result: TurnResult): Awaitable<void>;
+  observe?(result: WillObservation): Awaitable<void>;
   debug?(): WillDebug | undefined;
+  /** Called once when the channel runtime starts, so the engine can trigger turns later instead of only inside `decide`. */
+  attach?(api: WillRuntimeApi): void;
+}
+
+/** A finished passive turn as seen by the engine. */
+export interface WillObservation extends TurnResult {
+  /** Platform message IDs that `send_message` delivered during the turn; empty when the turn ended silently. */
+  readonly sentMessageIds?: readonly string[];
+}
+
+export interface WillRuntimeApi {
+  /**
+   * Starts a passive turn on the channel's latest input, as if `decide` had just returned `trigger` for it.
+   * Resolves `false` when nothing ran: the runtime is stopped, nothing has arrived yet, or a turn is already active.
+   */
+  wake(options: WillWakeOptions): Promise<boolean>;
+}
+
+export interface WillWakeOptions {
+  /** Short machine-readable cause, recorded in the decision log. */
+  readonly reason: string;
+  /** Decision details to record instead of the engine's current `debug()` snapshot. */
+  readonly debug?: WillDebug;
 }
 
 export interface WillDebug {
-  readonly engine: "default" | "routing" | "willingness";
+  readonly engine: "default" | "routing" | "willingness" | "semantic";
   readonly config?: Record<string, unknown>;
   readonly score?: number;
   readonly probability?: number;
+  /** Engine-specific details, such as a semantic gate's verdict. */
+  readonly detail?: Record<string, unknown>;
 }
 
 export interface WillPlugin {
