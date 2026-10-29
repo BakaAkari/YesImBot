@@ -20,6 +20,8 @@ export interface GatePromptInput {
   readonly selfId: string;
   readonly persona: string;
   readonly interests: readonly string[];
+  /** The group's atmosphere, from per-group config. */
+  readonly channelNote?: string;
   readonly history: readonly HistoryEntry[];
   readonly now: number;
 }
@@ -89,6 +91,7 @@ export function buildGatePrompt(input: GatePromptInput): string {
     input.persona.trim() || "群里的普通成员。",
     `</member>`,
     `<interests>${input.interests.join("、") || "无特别偏好"}</interests>`,
+    ...(input.channelNote?.trim() ? [`<channel>${input.channelNote.trim()}</channel>`] : []),
     `<history>`,
     ...lines,
     `</history>`,

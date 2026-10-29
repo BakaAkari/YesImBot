@@ -4,6 +4,7 @@ import type { Element } from "koishi";
 export interface RestoredHuman {
   readonly kind: "human";
   readonly selfId: string;
+  readonly channelId: string;
   readonly messageId: string;
   readonly userId: string;
   readonly name: string;
@@ -45,9 +46,11 @@ export function readSession(entries: readonly unknown[]): RestoredItem[] {
     if (message.role === "custom" && message.type === "yesimbot.message" && isObject(message.data)) {
       const data = message.data;
       const user = isObject(data.user) ? data.user : {};
+      const channel = isObject(data.channel) ? data.channel : {};
       items.push({
         kind: "human",
         selfId: asString(data.selfId) ?? "",
+        channelId: asString(channel.id) ?? "",
         messageId: asString(data.messageId) ?? asString(message.id) ?? "",
         userId: asString(user.id) ?? "",
         name: asString(user.name) ?? "",

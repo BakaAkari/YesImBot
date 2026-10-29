@@ -37,6 +37,15 @@ export interface PolicyWillingnessConfig {
   readonly ignoredUserIds: string[];
 }
 
+/** Per-group overrides for the semantic gate. */
+export interface SemanticChannelConfig {
+  readonly channelId: string;
+  /** One or two sentences about the group's atmosphere, shown to the gate. */
+  readonly note: string;
+  /** Overrides `shareCap` for this group. */
+  readonly shareCap?: number;
+}
+
 export interface PolicySemanticConfig {
   /** `shadow` runs the gate and logs it while willingness decides; `active` lets the gate decide. */
   readonly mode: "shadow" | "active";
@@ -54,6 +63,9 @@ export interface PolicySemanticConfig {
   readonly shareCap: number;
   readonly cooldownMs: number;
   readonly ignoredUserIds: string[];
+  readonly channels: SemanticChannelConfig[];
+  /** Resolved from `channels` for the engine's own channel. */
+  readonly channelNote?: string;
 }
 
 export interface WillPolicyConfig {
@@ -112,5 +124,6 @@ export function defaultSemanticConfig(): PolicySemanticConfig {
     shareCap: 0.02,
     cooldownMs: 90_000,
     ignoredUserIds: [],
+    channels: [],
   };
 }

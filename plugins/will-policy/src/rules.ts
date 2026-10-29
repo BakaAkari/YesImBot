@@ -25,7 +25,8 @@ export function rule(verdict: GateVerdict, context: RulingContext, config: Polic
     if (context.focusAgeMs >= config.questionGraceMs) return { speak: true, reason: "open_question" };
     return { speak: false, reason: "question_grace", recheckInMs: config.questionGraceMs - context.focusAgeMs };
   }
-  if (verdict.interest >= 2 && verdict.mood !== "冲突") {
+  if (verdict.interest >= 2) {
+    if (verdict.mood === "冲突") return { speak: false, reason: "conflict" };
     const { human, self, topHuman } = context.share;
     // Big groups: stay near shareCap of human traffic. Small groups: never out-talk the most active human.
     const limit = Math.max(1, Math.min(config.shareCap * human, topHuman));

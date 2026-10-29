@@ -54,6 +54,15 @@ const SemanticSchema = Schema.object({
   shareCap: Schema.number().default(0.02).description("非直接对话时，机器人发言轮数占真人消息数的上限"),
   cooldownMs: Schema.number().default(90000).description("发言后的冷却(毫秒)；被 @、被引用、被直接搭话不受影响"),
   ignoredUserIds: Schema.array(Schema.string()).default([]).description("忽略的发送者 ID（如其他 bot）：只作为上下文，不触发"),
+  channels: Schema.array(
+    Schema.object({
+      channelId: Schema.string().required().description("频道/群号"),
+      note: Schema.string().role("textarea").default("").description("这个群的氛围，一两句，给语义门看"),
+      shareCap: Schema.number().description("覆盖该群的发言份额上限；留空用全局 shareCap"),
+    }),
+  )
+    .default([])
+    .description("按群设置"),
 });
 
 export const WillPolicyConfigSchema: Schema<WillPolicyConfig> = Schema.intersect([
@@ -208,8 +217,14 @@ export default class WillPolicyPlugin implements WillPlugin {
     if (resolved.engine !== "semantic") return willingness;
 
     const semantic = resolved.semantic;
+    const channel = semantic.channels.find((entry) => entry.channelId === scope.channelId);
     const engine = new PolicySemanticEngine(
-      { ...semantic, ignoredUserIds: [...new Set([...semantic.ignoredUserIds, ...resolved.willingness.ignoredUserIds])] },
+      {
+        ...semantic,
+        ignoredUserIds: [...new Set([...semantic.ignoredUserIds, ...resolved.willingness.ignoredUserIds])],
+        shareCap: channel?.shareCap ?? semantic.shareCap,
+        channelNote: channel?.note,
+      },
       willingness,
       async (system, prompt, abortSignal) => {
         const { model } = this.ctx.yesimbot.model.resolveChatModel(semantic.model, scope);

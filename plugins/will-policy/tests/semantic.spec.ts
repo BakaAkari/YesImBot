@@ -76,7 +76,8 @@ describe("rule", () => {
 
   it("joins interesting topics only within the share cap and outside cooldown", () => {
     expect(rule(verdict({ interest: 2 }), base, config).reason).toBe("interest");
-    expect(rule(verdict({ interest: 2, mood: "冲突" }), base, config).speak).toBe(false);
+    expect(rule(verdict({ interest: 2, mood: "冲突" }), base, config)).toEqual({ speak: false, reason: "conflict" });
+    expect(rule(verdict({ interest: 1, mood: "冲突" }), base, config).reason).toBe("not_interesting");
     expect(rule(verdict({ interest: 3 }), { ...base, share: { human: 300, self: 6, topHuman: 50 } }, config).reason).toBe("share_cap");
     expect(rule(verdict({ interest: 3 }), { ...base, share: { human: 20, self: 1, topHuman: 8 } }, config).reason).toBe("share_cap");
     expect(rule(verdict({ interest: 3 }), { ...base, lastSelfAt: base.now - 10_000 }, config).reason).toBe("cooldown");
@@ -246,6 +247,8 @@ describe("wake hint", () => {
     await semantic.decide(message([text("米塔你说呢")]), state);
     await semantic.flush();
     expect(wake).toHaveBeenCalledWith(expect.objectContaining({ hint: expect.stringContaining("米塔你说呢") }));
+    expect(logger.info).toHaveBeenCalledWith("will_policy.semantic", expect.objectContaining({ channelId: "room-1", reason: "addressed" }));
+    expect(logger.info).toHaveBeenCalledWith("will_policy.semantic.wake", { channelId: "room-1", reason: "addressed", started: true });
   });
 });
 
@@ -266,6 +269,9 @@ describe("gate prompt", () => {
     expect(prompt).toContain("[-5s] #a 阿强(u1): 显卡降价了");
     expect(prompt).toContain("鲸鲸(b2) [bot]");
     expect(prompt).toContain("#c 米塔(你): 多少");
+    expect(prompt).not.toContain("<channel>");
+    const withNote = buildGatePrompt({ selfName: "米塔", selfId: "bot-1", persona: "", interests: [], channelNote: " 互损是群梗 ", now: 0, history: [] });
+    expect(withNote).toContain("<channel>互损是群梗</channel>");
   });
 });
 

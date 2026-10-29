@@ -43,6 +43,7 @@ export class PolicySemanticEngine implements WillEngine {
   /** The willingness fallback wanted to speak since the last gate run (active mode only). */
   private fallbackPending = false;
   private selfId = "";
+  private channelId = "";
   private lastRuling?: SpeakRuling & { verdict?: GateVerdict; at: number };
 
   public constructor(
@@ -76,12 +77,19 @@ export class PolicySemanticEngine implements WillEngine {
         continue;
       }
       if (item.selfId) this.selfId = item.selfId;
+      if (item.channelId) this.channelId = item.channelId;
       const text = renderElements(item.elements, item.selfId, this.selfName(), (id) => this.history.isOwn(id));
       const ignored = this.config.ignoredUserIds.includes(item.userId);
       this.history.addHuman({ messageId: item.messageId, userId: item.userId, name: item.name, text, timestamp: item.timestamp, ignored });
       humans += 1;
     }
-    this.logger.info("will_policy.semantic.restored", { humans, turns, lastSelfAt: this.history.lastSelfAt(), share: this.history.share(Date.now()) });
+    this.logger.info("will_policy.semantic.restored", {
+      channelId: this.channelId,
+      humans,
+      turns,
+      lastSelfAt: this.history.lastSelfAt(),
+      share: this.history.share(Date.now()),
+    });
   }
 
   public async decide(input: ChannelInput, state: WillState): Promise<"wait" | "trigger"> {
@@ -92,6 +100,7 @@ export class PolicySemanticEngine implements WillEngine {
     const data = input.data;
     const now = Date.now();
     this.selfId = data.selfId;
+    this.channelId = data.channel?.id ?? this.channelId;
     const userId = data.user?.id ?? "";
     const ignored = this.config.ignoredUserIds.includes(userId);
     const text = renderElements(data.elements, data.selfId, this.selfName(), (id) => this.history.isOwn(id));
@@ -200,7 +209,7 @@ export class PolicySemanticEngine implements WillEngine {
     if (!verdict) {
       const ruling: SpeakRuling = { speak: fallbackPending, reason: "gate_failed_fallback" };
       this.lastRuling = { ...ruling, at: now };
-      this.logger.warn("will_policy.semantic.gate_failed", { mode: this.config.mode, latencyMs, fallback: fallbackPending });
+      this.logger.warn("will_policy.semantic.gate_failed", { mode: this.config.mode, channelId: this.channelId, latencyMs, fallback: fallbackPending });
       if (ruling.speak) await this.wake(ruling, undefined, undefined);
       return ruling;
     }
@@ -219,6 +228,7 @@ export class PolicySemanticEngine implements WillEngine {
     this.lastRuling = { ...ruling, verdict, at: now };
     this.logger.info("will_policy.semantic", {
       mode: this.config.mode,
+      channelId: this.channelId,
       speak: ruling.speak,
       reason: ruling.reason,
       latencyMs,
@@ -242,6 +252,7 @@ export class PolicySemanticEngine implements WillEngine {
       selfId: this.selfId,
       persona: this.config.persona,
       interests: this.config.interests,
+      channelNote: this.config.channelNote,
       history,
       now,
     });
@@ -275,7 +286,7 @@ export class PolicySemanticEngine implements WillEngine {
       hint: wakeHint(ruling, verdict, focus),
       debug: { engine: "semantic", detail: { reason: ruling.reason, ...(verdict ? { verdict } : {}) } },
     });
-    this.logger.debug("will_policy.semantic.wake", { reason: ruling.reason, started });
+    this.logger.info("will_policy.semantic.wake", { channelId: this.channelId, reason: ruling.reason, started });
   }
 }
 
