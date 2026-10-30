@@ -390,12 +390,12 @@ describe("wake hint", () => {
     expect(wakeHint({ speak: true, reason: "gate_failed_fallback" }, undefined, undefined)).toContain("兜底");
   });
 
-  it("asks for a reaction instead of an opinion unless the bot was addressed", () => {
+  it("leans toward reacting over opining, leaving the form to the bot, unless addressed", () => {
     const react = wakeHint({ speak: true, reason: "react" }, verdict({ mood: "嗨", reactable: true }), undefined);
-    expect(react).toContain("sticker_search");
-    expect(react).toContain("不发表看法");
-    expect(wakeHint({ speak: true, reason: "interest" }, verdict(), undefined)).toContain("不要发表主观观点");
-    expect(wakeHint({ speak: true, reason: "addressed" }, verdict(), undefined)).not.toContain("主观观点");
+    expect(react).toContain("反应");
+    expect(react).toContain("自己决定");
+    expect(wakeHint({ speak: true, reason: "interest" }, verdict(), undefined)).toContain("比起发表观点");
+    expect(wakeHint({ speak: true, reason: "addressed" }, verdict(), undefined)).not.toContain("观点");
   });
 
   it("is passed to the runtime on wake", async () => {
