@@ -57,7 +57,16 @@ export interface GlobalBrainStore {
   status(sourceScope: ChannelContext): Promise<BrainThreadStatus[]>;
   participantScopes(): Promise<ChannelContext[]>;
   digest(scope: ChannelContext): Promise<BrainDigest>;
+  /** The newest open share from another scope, created at or after `since`, not yet offered to `target` for forwarding. */
+  forwardCandidate(target: ChannelContext, since: number): Promise<BrainThread | undefined>;
+  /** Records that `threadId` was offered to `target` for forwarding, so it is not offered again. */
+  markForwardOffered(threadId: string, target: ChannelContext): Promise<void>;
+  /** How many forwarding offers `target` received at or after `since`. */
+  forwardOffers(target: ChannelContext, since: number): Promise<number>;
 }
+
+/** Forwarding offers reuse "seen" records under a separate key, so older readers simply ignore them. */
+const forwardKey = (target: ChannelContext): string => `forward:${scopeKey(target)}`;
 
 interface BrainSeenRecord {
   readonly scopeKey: string;
@@ -85,6 +94,7 @@ export function createGlobalBrainStore(options: GlobalBrainStoreOptions): Global
   const replies = new Map<string, BrainReply[]>();
   const seenThreads = new Map<string, Set<string>>();
   const seenReplies = new Map<string, Set<string>>();
+  const offerTimes = new Map<string, number[]>();
   let tail: Promise<void> = Promise.resolve();
   let initialized = false;
 
@@ -115,6 +125,12 @@ export function createGlobalBrainStore(options: GlobalBrainStoreOptions): Global
     const seen = seenReplies.get(replyId) ?? new Set<string>();
     seen.add(key);
     seenReplies.set(replyId, seen);
+  };
+
+  const rememberOffer = (key: string, at: number): void => {
+    const times = offerTimes.get(key) ?? [];
+    times.push(at);
+    offerTimes.set(key, times);
   };
 
   const markThreadSeen = async (threadId: string, key: string): Promise<void> => {
@@ -151,6 +167,7 @@ export function createGlobalBrainStore(options: GlobalBrainStoreOptions): Global
       return;
     }
     if (record.type === "seen") {
+      if (record.data.threadId && record.data.scopeKey.startsWith("forward:")) rememberOffer(record.data.scopeKey, record.data.seenAt);
       if (record.data.threadId) rememberThreadSeen(record.data.threadId, record.data.scopeKey);
       if (record.data.replyId) rememberReplySeen(record.data.replyId, record.data.scopeKey);
       return;
@@ -353,6 +370,42 @@ export function createGlobalBrainStore(options: GlobalBrainStoreOptions): Global
           replies: replyItems.map((item) => ({ thread: { ...item.thread, tags: [...item.thread.tags] }, replies: item.replies })),
         };
       });
+    },
+
+    async forwardCandidate(target, since) {
+      await this.init();
+      return serialize(async () => {
+        const key = scopeKey(target);
+        const offered = forwardKey(target);
+        const candidate = [...threads.values()]
+          .filter(
+            (thread) =>
+              thread.kind === "share" &&
+              thread.status === "open" &&
+              thread.createdAt >= since &&
+              scopeKey(thread.sourceScope) !== key &&
+              !isThreadSeen(thread.id, offered),
+          )
+          .sort((left, right) => right.createdAt - left.createdAt)[0];
+        return candidate ? { ...candidate, tags: [...candidate.tags] } : undefined;
+      });
+    },
+
+    async markForwardOffered(threadId, target) {
+      await this.init();
+      return serialize(async () => {
+        const key = forwardKey(target);
+        if (isThreadSeen(threadId, key)) return;
+        const at = now();
+        rememberThreadSeen(threadId, key);
+        rememberOffer(key, at);
+        await appendRecord({ type: "seen", data: { scopeKey: key, threadId, seenAt: at } });
+      });
+    },
+
+    async forwardOffers(target, since) {
+      await this.init();
+      return serialize(async () => (offerTimes.get(forwardKey(target)) ?? []).filter((at) => at >= since).length);
     },
   };
 }

@@ -134,4 +134,43 @@ describe("GlobalBrainPlugin", () => {
       expect(String((result.messages[1] as { content?: string }).content)).toContain("cache-safe global brain note");
     });
   });
+
+  it("offers one fresh share to the quiet target group, then waits out the gap", async () => {
+    await withTempDir(async (baseDir) => {
+      const { ctx, plugins, trigger } = createContext(baseDir);
+      const scheduledShare = {
+        channelId: "group-b",
+        idleMinutes: 20,
+        minGapMinutes: 120,
+        dailyLimit: 4,
+        freshHours: 72,
+        startHour: 0,
+        endHour: 24,
+        checkIntervalMinutes: 5,
+      };
+      const plugin = new GlobalBrainPlugin(
+        ctx as never,
+        { storageDir: baseDir, maxDigestThreads: 5, maxDigestReplies: 5, maxDigestContentLength: 80, maxBlobBytes: 1024, scheduledShare } as never,
+      );
+      await plugin.start();
+      const source = await plugins[0]!.setup(channelScope("group-a"), { selfId: "bot-a" });
+      const deposit = (await getTools(source!)).brain_deposit!;
+      await deposit.execute({ kind: "share", content: "离谱梗图", tags: ["meme"] } as never, {} as never);
+
+      expect(await plugin.offerForward()).toBeUndefined();
+      await plugins[0]!.setup(channelScope("group-b"), { selfId: "bot-a" });
+      expect(await plugin.offerForward(Date.now() + 5 * 60_000)).toBeUndefined();
+
+      const offered = await plugin.offerForward(Date.now() + 25 * 60_000);
+      expect(offered?.content).toBe("离谱梗图");
+      expect(trigger).toHaveBeenCalledOnce();
+      const event = trigger.mock.calls[0]?.[0] as unknown as { eventType: string; channel: { id: string }; text: string };
+      expect(event).toMatchObject({ eventType: "global-brain.forward", channel: { id: "group-b" } });
+      expect(event.text).toContain("不加点评");
+
+      await deposit.execute({ kind: "share", content: "第二张", tags: [] } as never, {} as never);
+      expect(await plugin.offerForward(Date.now() + 60 * 60_000)).toBeUndefined();
+      expect((await plugin.offerForward(Date.now() + 150 * 60_000))?.content).toBe("第二张");
+    });
+  });
 });

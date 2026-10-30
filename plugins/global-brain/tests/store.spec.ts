@@ -155,4 +155,24 @@ describe("GlobalBrainStore", () => {
       expect(warn).toHaveBeenCalled();
     });
   });
+
+  it("offers each fresh share from another scope once for forwarding, independent of digest reads", async () => {
+    await withTempDir(async (dir) => {
+      const first = await makeStore(dir, 5_000);
+      const old = await first.deposit({ kind: "share", sourceScope: scopeA as never, content: "旧梗图", tags: [] });
+      await first.deposit({ kind: "question", sourceScope: scopeA as never, content: "有人懂吗", tags: [] });
+      await first.deposit({ kind: "share", sourceScope: scopeB as never, content: "自己群的", tags: [] });
+      await first.digest(scopeB as never);
+
+      expect((await first.forwardCandidate(scopeB as never, 0))?.id).toBe(old.id);
+      expect(await first.forwardCandidate(scopeB as never, 6_000)).toBeUndefined();
+      await first.markForwardOffered(old.id, scopeB as never);
+
+      const reloaded = await makeStore(dir, 9_000);
+      expect(await reloaded.forwardCandidate(scopeB as never, 0)).toBeUndefined();
+      expect(await reloaded.forwardOffers(scopeB as never, 5_000)).toBe(1);
+      expect(await reloaded.forwardOffers(scopeB as never, 5_001)).toBe(0);
+      expect((await reloaded.digest(scopeA as never)).threads).toHaveLength(1);
+    });
+  });
 });

@@ -69,10 +69,26 @@ export interface GlobalBrainConfig {
   readonly maxDigestContentLength: number;
   readonly maxBlobBytes: number;
   readonly allowedChannels?: string[];
+  readonly scheduledShare?: ScheduledShareConfig;
+}
+
+/** Offers one stored share to a target group when it has gone quiet, for the bot to forward as is. */
+export interface ScheduledShareConfig {
+  /** Target channel id; empty turns the schedule off. */
+  readonly channelId: string;
+  readonly idleMinutes: number;
+  readonly minGapMinutes: number;
+  readonly dailyLimit: number;
+  /** Only shares deposited within this many hours are offered. */
+  readonly freshHours: number;
+  readonly startHour: number;
+  readonly endHour: number;
+  readonly checkIntervalMinutes: number;
 }
 declare module "koishi-plugin-aka-yesimbot" {
   interface EventMap {
     "global-brain.immediate": { thread: BrainImmediateShare };
+    "global-brain.forward": { thread: BrainImmediateShare };
   }
 }
 export function buildImmediateShareEvent(scope: ChannelContext, selfId: string, thread: BrainThread): EventRecord<"global-brain.immediate"> {
@@ -84,6 +100,24 @@ export function buildImmediateShareEvent(scope: ChannelContext, selfId: string, 
     timestamp: Date.now(),
     channel: { id: scope.channelId, type: scope.type === "direct" ? DIRECT_CHANNEL_TYPE : TEXT_CHANNEL_TYPE },
     text: `Global brain immediate share [${thread.kind}] ${thread.id}: ${summary}`,
+    thread: { id: thread.id, kind: thread.kind, content: thread.content, tags: [...thread.tags] },
+  };
+}
+
+/** Offers a stored share to a quiet group: forward it as is, without comment, or skip it. */
+export function buildForwardEvent(scope: ChannelContext, selfId: string, thread: BrainThread): EventRecord<"global-brain.forward"> {
+  const summary = thread.content.length > 160 ? `${thread.content.slice(0, 160)}...` : thread.content;
+  return {
+    eventType: "global-brain.forward",
+    platform: scope.platform,
+    selfId,
+    timestamp: Date.now(),
+    channel: { id: scope.channelId, type: scope.type === "direct" ? DIRECT_CHANNEL_TYPE : TEXT_CHANNEL_TYPE },
+    text: [
+      `你之前在别的群存过一条觉得有意思的内容：${summary}（id=${thread.id}）。这个群已经有一阵没人说话了。`,
+      "想转发就用 brain_read 取出原内容，原样发到当前群：不加点评、不加介绍、不说来源，就像普通人随手转发一样。",
+      "不想发就直接结束本轮。",
+    ].join(""),
     thread: { id: thread.id, kind: thread.kind, content: thread.content, tags: [...thread.tags] },
   };
 }
