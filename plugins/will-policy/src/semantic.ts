@@ -20,6 +20,8 @@ import type { PolicyWillingnessEngine } from "./willingness.js";
 const DIRECT_CHANNEL_TYPE = 1 satisfies Universal.Channel.Type;
 /** How long to wait before asking the gate again when a wake found the bot busy. */
 const BUSY_RETRY_MS = 30_000;
+/** Wake reasons where a silent turn means "not interested", so the gate should stop asking for a while. */
+const DECLINABLE = new Set(["interest", "gate_failed_fallback"]);
 
 /** Calls the gate model; rejects or aborts on failure. */
 export type GateGenerate = (system: string, prompt: string, signal: AbortSignal) => Promise<string>;
@@ -51,6 +53,8 @@ export class PolicySemanticEngine implements WillEngine {
   private busyRetried = false;
   /** When the gate last started a turn, to time the main model. */
   private wokeAt?: { at: number; reason: string };
+  /** An interest or fallback wake ended without the bot saying anything. */
+  private lastDeclinedAt?: number;
 
   public constructor(
     private readonly config: PolicySemanticConfig,
@@ -135,6 +139,8 @@ export class PolicySemanticEngine implements WillEngine {
     const now = Date.now();
     this.history.recordSelfTurn(result.sentMessageIds ?? [], now);
     if (this.wokeAt) {
+      const silent = (result.sentMessageIds?.length ?? 0) === 0;
+      if (silent && DECLINABLE.has(this.wokeAt.reason)) this.lastDeclinedAt = now;
       this.logger.info("will_policy.semantic.turn", {
         channelId: this.channelId,
         reason: this.wokeAt.reason,
@@ -223,12 +229,14 @@ export class PolicySemanticEngine implements WillEngine {
     const verdict = await this.ask(history, now);
     const latencyMs = Date.now() - startedAt;
 
-    const focus = verdict
-      ? (history.find((entry) => entry.messageId === verdict.focusMessageId) ?? [...history].reverse().find((entry) => !entry.self))
-      : undefined;
+    const latestHuman = [...history].reverse().find((entry) => !entry.self && !entry.ignored);
+    const named = verdict ? history.find((entry) => entry.messageId === verdict.focusMessageId) : undefined;
+    // Never point the main model at another bot's line or at its own.
+    const focus = verdict ? (named && !named.self && !named.ignored ? named : latestHuman) : undefined;
     const context: RulingContext = {
       now,
       lastSelfAt: this.history.lastSelfAt(),
+      lastDeclinedAt: this.lastDeclinedAt,
       focusAgeMs: focus ? now - focus.timestamp : 0,
       share: this.history.share(now),
     };

@@ -82,6 +82,14 @@ describe("rule", () => {
     expect(rule(verdict({ interest: 3 }), { ...base, share: { human: 20, self: 1, topHuman: 8 } }, config).reason).toBe("share_cap");
     expect(rule(verdict({ interest: 3 }), { ...base, lastSelfAt: base.now - 10_000 }, config).reason).toBe("cooldown");
   });
+
+  it("holds back interest wakes for a cooldown after the bot declined one", () => {
+    const declined = { ...base, lastDeclinedAt: base.now - 10_000 };
+    expect(rule(verdict({ interest: 3 }), declined, config).reason).toBe("declined");
+    expect(rule(verdict({ addressed: true }), declined, config).speak).toBe(true);
+    expect(rule(verdict({ interest: 3 }), { ...base, lastDeclinedAt: base.now - config.cooldownMs }, config).speak).toBe(true);
+    expect(fallbackRule(true, declined, config).reason).toBe("gate_failed_declined");
+  });
 });
 
 describe("fallbackRule", () => {
@@ -165,6 +173,42 @@ describe("PolicySemanticEngine", () => {
     expect(generate).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(60_000);
     expect(generate).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops waking for interest after a silent woken turn, but still answers when addressed", async () => {
+    let next = verdict({ interest: 3 });
+    const generate = vi.fn<GateGenerate>(async () => JSON.stringify(next));
+    const { semantic, wake } = engine({ mode: "active" }, generate);
+    await semantic.decide(message([text("显卡降价了")]), state);
+    expect((await semantic.flush())?.reason).toBe("interest");
+    await semantic.observe({ turnId: "t", status: "done", messages: [], sentMessageIds: [] });
+
+    await semantic.decide(message([text("4090 也降了")]), state);
+    expect((await semantic.flush())?.reason).toBe("declined");
+    next = verdict({ addressed: true });
+    await semantic.decide(message([text("米塔你觉得呢")]), state);
+    expect((await semantic.flush())?.reason).toBe("addressed");
+    expect(wake).toHaveBeenCalledTimes(2);
+  });
+
+  it("never points the hint at an ignored sender", async () => {
+    const generate = vi.fn<GateGenerate>(async () => JSON.stringify(verdict({ addressed: true, focusMessageId: "m-bot" })));
+    const { semantic, wake } = engine({ mode: "active", ignoredUserIds: ["bot-2"] }, generate);
+    await semantic.decide(message([text("米塔在吗")]), state);
+    const bot = createMessage({
+      platform: "test",
+      selfId: "bot-1",
+      timestamp: Date.now(),
+      channel: { id: "room-1", type: 0 },
+      user: { id: "bot-2", name: "鲸鲸" },
+      messageId: "m-bot",
+      elements: [text("我是机器人")] as never,
+    });
+    await semantic.decide(bot, state);
+    await semantic.flush();
+    const hint = (wake.mock.calls[0]![0] as { hint: string }).hint;
+    expect(hint).toContain("米塔在吗");
+    expect(hint).not.toContain("我是机器人");
   });
 
   it("logs how long the woken turn took", async () => {

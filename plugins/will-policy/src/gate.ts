@@ -39,10 +39,10 @@ export const GATE_SYSTEM = `<role>
 
 <fields>
 addressed: 最近的消息是否在跟该成员说话。包括 @它、回复它的消息、叫它的名字跟它说话、明显在接它上一句话。以下都不算：用第三人称谈论它（"米塔是 bot 吧""问米塔也没用"）、泛泛地对全群说话、只是顺带提到名字。
-others: 最近的消息是否明确是别人之间的你来我往，与该成员无关。
+others: 最近的消息是否明确是别人之间的你来我往，与该成员无关。两三个人互相接话、互相调侃、一问一答，都算 true。
 openQuestion: 是否有面向全群的提问，而且还没人回答。反问、感叹、自问自答不算。
-interest: 0-3，最近的话题与该成员兴趣的贴合度。看实际在聊什么，不看字面是否出现某个词。0 无关，1 沾边，2 相关，3 正中兴趣。
-complete: 最后说话的人意思是否已经说完。话说一半、明显还在连发、刚发了"等下""我说个事"时为 false。
+interest: 0-3，最近的话题与该成员兴趣的贴合度。看实际在聊什么，不看字面是否出现某个词。0 无关，1 沾边，2 相关，3 正中兴趣。只有表情、图片、一两个字的短句、斗图刷屏时，没有可接的内容，最多给 1。
+complete: 最后说话的人意思是否已经说完。话说一半、明显还在连发、刚发了"等下""我说个事"、只抛出一个还没展开的开头（"大工程""有个事"）时为 false。
 mood: 现场气氛，取 嗨 / 闲 / 认真 / 低落 / 冲突 之一。熟人互损和玩梗是 嗨，不是 冲突。
 focusMessageId: 最值得接的一条消息的 id（# 后面的值）；没有就填最后一条真人消息的 id。
 </fields>
@@ -78,6 +78,24 @@ focusMessageId: 最值得接的一条消息的 id（# 后面的值）；没有�
 [-12s] #e2 老王(333): 别理它，它是 bot
 </history>
 <output>{"addressed":false,"others":true,"openQuestion":false,"interest":1,"complete":true,"mood":"嗨","focusMessageId":"e2"}</output>
+</example>
+<example>
+<history>
+[-50s] #f1 阿梅(777): 这批零件磨损有点大
+[-40s] #f2 阿曼(888): 你那批是哪年的
+[-30s] #f3 阿梅(777): 去年底的，换了两次了
+[-20s] #f4 阿曼(888): 那正常，那批都这样
+</history>
+<output>{"addressed":false,"others":true,"openQuestion":false,"interest":2,"complete":true,"mood":"认真","focusMessageId":"f4"}</output>
+</example>
+<example>
+<history>
+[-30s] #g1 小柚(999): [表情]
+[-25s] #g2 阿拉(123): [表情][表情]
+[-20s] #g3 小柚(999): [图片]
+[-12s] #g4 阿拉(123): 草
+</history>
+<output>{"addressed":false,"others":false,"openQuestion":false,"interest":0,"complete":true,"mood":"嗨","focusMessageId":"g4"}</output>
 </example>
 <example>
 <history>
