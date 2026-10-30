@@ -137,6 +137,8 @@ export class PolicySemanticEngine implements WillEngine {
   public async observe(result: WillObservation): Promise<void> {
     await this.inner.observe(result);
     const now = Date.now();
+    // Text replies arrived through `noteDelivered`; anything still unknown is a sticker.
+    for (const id of result.sentMessageIds ?? []) if (!this.history.isOwn(id)) this.history.addSelf(id, "[表情]", now);
     this.history.recordSelfTurn(result.sentMessageIds ?? [], now);
     if (this.wokeAt) {
       const silent = (result.sentMessageIds?.length ?? 0) === 0;

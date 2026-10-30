@@ -12,7 +12,7 @@ export interface RestoredHuman {
   readonly timestamp: number;
 }
 
-/** One bot turn that delivered messages, recovered from `send_message` results. */
+/** One bot turn that delivered messages, recovered from `send_message` and `sticker_send` results. */
 export interface RestoredSelfTurn {
   readonly kind: "self";
   readonly messages: Array<{ messageId: string; text: string }>;
@@ -22,6 +22,10 @@ export interface RestoredSelfTurn {
 export type RestoredItem = RestoredHuman | RestoredSelfTurn;
 
 type Loose = Record<string, unknown>;
+
+/** Tools whose results carry delivered message ids, and the text a sticker stands for. */
+const DELIVERY_TOOLS = new Set(["send_message", "sticker_send"]);
+const STICKER_TEXT = "[表情]";
 
 const isObject = (value: unknown): value is Loose => typeof value === "object" && value !== null;
 const asString = (value: unknown): string | undefined => (typeof value === "string" && value ? value : undefined);
@@ -62,11 +66,11 @@ export function readSession(entries: readonly unknown[]): RestoredItem[] {
 
     if (!Array.isArray(message.content)) continue;
     for (const part of message.content) {
-      if (!isObject(part) || part.toolName !== "send_message") continue;
+      if (!isObject(part) || typeof part.toolName !== "string" || !DELIVERY_TOOLS.has(part.toolName)) continue;
       const callId = asString(part.toolCallId) ?? "";
       if (part.type === "tool-call") {
         const input = isObject(part.input) ? part.input : {};
-        sendTexts.set(callId, strings(input.messages));
+        sendTexts.set(callId, part.toolName === "sticker_send" ? [STICKER_TEXT] : strings(input.messages));
         continue;
       }
       if (part.type !== "tool-result" || !isObject(part.output) || !isObject(part.output.value)) continue;

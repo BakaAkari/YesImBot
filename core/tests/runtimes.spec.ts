@@ -311,13 +311,15 @@ describe("ChannelRuntime scheduling", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
-  it("reports the message IDs send_message delivered to observe", async () => {
+  it("reports the message IDs send_message and sticker_send delivered to observe", async () => {
     state.decide.mockResolvedValue("trigger");
     state.run.mockReturnValue(
       (async function* () {
         yield { type: "turn.start", turnId: "turn-1" };
         yield { type: "tool.done", turnId: "turn-1", toolName: "send_message", toolCallId: "c1", result: { ok: true, messageIds: ["m1", "m2"], count: 2 } };
         yield { type: "tool.done", turnId: "turn-1", toolName: "send_message", toolCallId: "c2", result: { ok: false, sent: ["m3"], failedAt: 1 } };
+        yield { type: "tool.done", turnId: "turn-1", toolName: "sticker_send", toolCallId: "c3", result: { ok: true, id: "s1", messageIds: ["m4"] } };
+        yield { type: "tool.done", turnId: "turn-1", toolName: "sticker_search", toolCallId: "c4", result: { ok: true, messageIds: ["x"] } };
         yield { type: "turn.done", turnId: "turn-1" };
       })(),
     );
@@ -325,7 +327,7 @@ describe("ChannelRuntime scheduling", () => {
     try {
       const result = await value.handle(event);
       if (result.kind === "run") await result.done;
-      expect(state.observe).toHaveBeenCalledWith(expect.objectContaining({ turnId: "turn-1", sentMessageIds: ["m1", "m2", "m3"] }));
+      expect(state.observe).toHaveBeenCalledWith(expect.objectContaining({ turnId: "turn-1", sentMessageIds: ["m1", "m2", "m3", "m4"] }));
     } finally {
       await value.stop();
       await rm(root, { recursive: true, force: true });

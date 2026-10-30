@@ -206,6 +206,19 @@ describe("PolicySemanticEngine", () => {
     expect(generate).toHaveBeenCalledTimes(2);
   });
 
+  it("treats a sticker-only reaction as speaking, not as a decline", async () => {
+    const generate = vi.fn<GateGenerate>(async () => JSON.stringify(verdict({ reactable: true, mood: "嗨" })));
+    const { semantic, wake } = engine({ mode: "active", cooldownMs: 0 }, generate);
+    await semantic.decide(message([text("三天白干")]), state);
+    expect((await semantic.flush())?.reason).toBe("react");
+    await semantic.observe({ turnId: "t", status: "done", messages: [], sentMessageIds: ["sticker-1"] });
+    await semantic.decide(message([text("哈哈哈哈")]), state);
+    // Counted toward share (two human lines, one bot turn), and not recorded as a decline.
+    expect((await semantic.flush())?.reason).toBe("react_share_cap");
+    expect(generate.mock.calls[1]![1]).toContain("#sticker-1 米塔(你): [表情]");
+    expect(wake).toHaveBeenCalledTimes(1);
+  });
+
   it("stops waking for interest after a silent woken turn, but still answers when addressed", async () => {
     let next = verdict({ interest: 3 });
     const generate = vi.fn<GateGenerate>(async () => JSON.stringify(next));
@@ -330,6 +343,32 @@ describe("restore", () => {
     expect(prompt).toContain("#own-1 米塔(你): 涨麻了");
     expect(prompt).toContain("#h2 阿强(user-1): [回复米塔的消息]真的假的");
     expect(wake).not.toHaveBeenCalled();
+  });
+
+  it("counts stickers sent with sticker_send as the bot's own turns", async () => {
+    const generate = vi.fn<GateGenerate>(async () => JSON.stringify(verdict({ reactable: true })));
+    const { semantic } = engine({ mode: "active" }, generate);
+    semantic.restore([
+      human("h1", now - 60_000, [text("我把工程覆盖了")]),
+      {
+        type: "message",
+        timestamp: now - 20_000,
+        turnId: "t2",
+        data: { role: "assistant", content: [{ type: "tool-call", toolCallId: "s1", toolName: "sticker_send", input: { sticker_id: "x" } }] },
+      },
+      {
+        type: "message",
+        timestamp: now - 20_000,
+        turnId: "t2",
+        data: {
+          role: "tool",
+          content: [{ type: "tool-result", toolCallId: "s1", toolName: "sticker_send", output: { type: "json", value: { ok: true, messageIds: ["own-s"] } } }],
+        },
+      },
+    ]);
+    await semantic.decide(message([text("哈哈哈")]), state);
+    expect((await semantic.flush())?.reason).toBe("cooldown");
+    expect(generate.mock.calls[0]![1]).toContain("#own-s 米塔(你): [表情]");
   });
 });
 

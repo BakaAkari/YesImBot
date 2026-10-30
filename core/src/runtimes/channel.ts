@@ -38,6 +38,9 @@ import {
 } from "../messages/index.js";
 import { buildCoreSystemPrompt, readPersona } from "./prompt.js";
 
+/** Tools that post to the channel and report the delivered message ids; their output counts as the bot speaking. */
+const DELIVERY_TOOLS = new Set(["send_message", "sticker_send"]);
+
 type ChannelInput = AgentMessageOf<"yesimbot.message"> | AgentMessageOf<"yesimbot.event">;
 
 export interface WillDecisionEntryData {
@@ -397,7 +400,7 @@ export class ChannelRuntime {
           continue;
         }
         if (event.type === "tool.done") {
-          if (event.toolName === "send_message") {
+          if (DELIVERY_TOOLS.has(event.toolName)) {
             const result = event.result as { ok?: boolean; messageIds?: unknown; sent?: unknown } | undefined;
             if (result?.ok === true) delivered = true;
             // A failed send may still have delivered its first segments; those count as said.

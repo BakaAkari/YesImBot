@@ -55,7 +55,7 @@ function createDeps(overrides: Partial<StickerConfig> = {}) {
     markUsed: vi.fn(async () => projection({ usageCount: 1 })),
   };
   const classifier: StickerClassifier = { classify: vi.fn(async () => ({ category: "meme", tags: ["搞笑"] })) };
-  const sender: StickerSender = { send: vi.fn(async () => undefined) };
+  const sender: StickerSender = { send: vi.fn(async () => ["sent-1"]) };
   const assets: AssetStore = { put: vi.fn(async () => "a".repeat(32)), get: vi.fn(async () => pngBytes), clear: vi.fn(async () => undefined) };
   const tools = createStickerTools({ store: store as unknown as StickerStore, classifier, sender, assets, scope, config: effectiveConfig });
   return { store, classifier, sender, assets, tools };
@@ -116,7 +116,7 @@ describe("sticker agent tools", () => {
     expect(deps.store.listByScopeKey).toHaveBeenCalledWith("global");
     expect(deps.sender.send).toHaveBeenCalledWith({ bytes: pngBytes, mediaType: "image/png" });
     expect(deps.store.markUsed).toHaveBeenCalledWith("global", "a".repeat(64));
-    expect(result).toMatchObject({ ok: true, tags: ["可爱猫猫", "工作"] });
+    expect(result).toMatchObject({ ok: true, tags: ["可爱猫猫", "工作"], messageIds: ["sent-1"] });
   });
 
   it("sticker_send tag random range can include lower-scoring matches", async () => {

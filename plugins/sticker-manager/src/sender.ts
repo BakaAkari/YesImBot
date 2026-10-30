@@ -7,7 +7,8 @@ export interface StickerSendInput {
 }
 
 export interface StickerSender {
-  send(input: StickerSendInput): Promise<void>;
+  /** Resolves to the platform message ids of the delivered sticker. */
+  send(input: StickerSendInput): Promise<string[]>;
 }
 
 export class BotStickerSender implements StickerSender {
@@ -16,8 +17,9 @@ export class BotStickerSender implements StickerSender {
     private readonly scope: ChannelContext,
   ) {}
 
-  public async send(input: StickerSendInput): Promise<void> {
+  public async send(input: StickerSendInput): Promise<string[]> {
     const dataUrl = `data:${input.mediaType};base64,${Buffer.from(input.bytes).toString("base64")}`;
-    await this.bot.sendMessage(this.scope.channelId, [h.image(dataUrl)]);
+    const ids: unknown = await this.bot.sendMessage(this.scope.channelId, [h.image(dataUrl)]);
+    return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string" && id !== "") : [];
   }
 }

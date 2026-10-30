@@ -153,11 +153,12 @@ export function createStickerTools(options: StickerToolsOptions): ToolSet {
 
         const bytes = await store.readBytes(sticker);
         const prepared = prepareStaticGif(bytes, sticker.mime, config.sendStaticAsGif);
-        await sender.send({ bytes: prepared.bytes, mediaType: prepared.mediaType });
+        const messageIds = await sender.send({ bytes: prepared.bytes, mediaType: prepared.mediaType });
         await store.markUsed(scopeKey, sticker.id);
         return {
           ok: true,
           id: sticker.id,
+          messageIds,
           category: sticker.category,
           tags: sticker.tags,
           message: tags && tags.length > 0 ? `已按标签 ${tags.join("、")} 发送 ${sticker.category} 分类的表情包` : `已发送 ${sticker.category} 分类的表情包`,
