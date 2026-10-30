@@ -194,6 +194,7 @@ export function createStickerTools(options: StickerToolsOptions): ToolSet {
   const searchTool: FunctionTool<SearchStickerInput, ToolResult> = {
     description: [
       "搜索当前可见的表情包，返回紧凑 id 列表，供 sticker_send 使用。",
+      "结果顺序每次随机，不按新旧或使用次数排序。",
       'sticker_search 只用于查询；确定目标后调用 sticker_send，或在启用 sticker 元素时输出 <sticker id="..."/>。',
       "绝不能把返回的 id 拼成 artifact:// 等资源 URI。",
       ...(config.tagMode ? ["实验性 tag 模式开启时，可按 tags 过滤。"] : []),
@@ -209,7 +210,9 @@ export function createStickerTools(options: StickerToolsOptions): ToolSet {
       additionalProperties: false,
     }),
     execute: async (query) => {
-      const stickers = await store.search(scopeKey, query);
+      // Draw from the full match set in random order, so taking the first result varies between calls.
+      const limit = query.limit && query.limit > 0 ? Math.min(query.limit, 50) : 20;
+      const stickers = shuffle(await store.search(scopeKey, { ...query, limit: 50 })).slice(0, limit);
       return {
         ok: true,
         stickers: stickers.map((sticker) => ({
@@ -254,6 +257,14 @@ export async function pickBestTaggedSticker(
   const threshold = Math.min(best, Math.max(0, randomRange));
   const candidates = matches.filter((sticker) => score(sticker) >= best - threshold);
   return candidates[Math.floor(Math.random() * candidates.length)] ?? null;
+}
+
+function shuffle<T>(items: T[]): T[] {
+  for (let index = items.length - 1; index > 0; index -= 1) {
+    const other = Math.floor(Math.random() * (index + 1));
+    [items[index], items[other]] = [items[other], items[index]];
+  }
+  return items;
 }
 
 function stickerMatches(tags: readonly string[], requested: string, fuzzyTagMatch: boolean): boolean {

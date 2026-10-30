@@ -71,6 +71,21 @@ describe("sticker agent tools", () => {
     expect(Object.keys(tools)).toEqual(["sticker_steal", "sticker_send", "sticker_categories", "sticker_search"]);
   });
 
+  it("shuffles sticker_search results across the full match set before applying the limit", async () => {
+    const { store, tools } = createDeps();
+    const rows = Array.from({ length: 30 }, (_, index) => projection({ id: String(index).padStart(64, "0") }));
+    store.search.mockResolvedValueOnce([...rows]);
+    const random = vi.spyOn(Math, "random").mockReturnValue(0);
+    try {
+      const result = (await execute(tools.sticker_search, { category: "笑死", limit: 3 })) as { stickers: Array<{ id: string }> };
+      expect(store.search).toHaveBeenCalledWith(expect.anything(), { category: "笑死", limit: 50 });
+      expect(result.stickers).toHaveLength(3);
+      expect(result.stickers[0].id).not.toBe(rows[0].id);
+    } finally {
+      random.mockRestore();
+    }
+  });
+
   it("exposes sticker_tags only in experimental tag mode", () => {
     const disabled = createDeps();
     expect(disabled.tools.sticker_tags).toBeUndefined();
