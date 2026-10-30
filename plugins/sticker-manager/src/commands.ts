@@ -185,11 +185,16 @@ export function registerStickerCommands(deps: StickerCommandDeps): () => void {
         const categories = clear ? [] : (await store.listCategories(scopeKey)).map((item) => item.category);
         let updated = 0;
         let failed = 0;
+        let notSticker = 0;
 
         for (const sticker of targets) {
           try {
             const bytes = await store.readBytes(sticker);
             const result = await classifier.classify({ bytes, mediaType: sticker.mime, categories, signal: undefined });
+            if (result?.notSticker) {
+              notSticker += 1;
+              continue;
+            }
             const classified = result?.category;
             if (!classified) {
               if (clear) {
@@ -216,6 +221,7 @@ export function registerStickerCommands(deps: StickerCommandDeps): () => void {
         }
 
         const lines = [`重分类完成`, `总数: ${targets.length}`, `更新: ${updated}`, `失败: ${failed}`];
+        if (notSticker > 0) lines.push(`判定非表情包（未改动）: ${notSticker}`);
         if (clear) {
           lines.push("已清除旧分类和 tag");
         } else {

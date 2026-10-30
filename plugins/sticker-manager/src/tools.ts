@@ -46,6 +46,7 @@ export function createStickerTools(options: StickerToolsOptions): ToolSet {
       "收藏当前消息中的一张表情包图片。",
       "asset_id 必须来自消息里的 [图片：asset://<id>]，只传 32 位十六进制 id，不要拼接或猜测。",
       "category 可选；不提供时会使用视觉模型自动分类，失败则归入“未分类”。",
+      "收藏前视觉模型会判断是否表情包；截图、照片、作品图会被拒收并返回 not_sticker。",
       ...(config.tagMode ? ["实验性 tag 模式开启时，收藏后会按分类自动打 tag。"] : []),
     ].join("\n"),
     inputSchema: jsonSchema<StealStickerInput>({
@@ -79,7 +80,8 @@ export function createStickerTools(options: StickerToolsOptions): ToolSet {
       }
 
       const categories = (await store.listCategories(scopeKey)).map((item) => item.category);
-      const autoClassified = category ? undefined : await classifier.classify({ bytes, mediaType, categories, signal: execution.abortSignal });
+      const autoClassified = await classifier.classify({ bytes, mediaType, categories, signal: execution.abortSignal });
+      if (autoClassified?.notSticker) return { ok: false, error: "not_sticker" };
       const classified = category ? normalizeCategory(category) : (autoClassified?.category ?? "未分类");
 
       const saved = await store.save({

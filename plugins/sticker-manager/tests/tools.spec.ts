@@ -3,7 +3,7 @@ import type { AssetStore, ChannelContext, ToolSet } from "koishi-plugin-aka-yesi
 import { PNG } from "pngjs";
 import { describe, expect, it, vi } from "vitest";
 
-import type { StickerClassifier } from "../src/classifier.js";
+import { parseClassification, type StickerClassifier } from "../src/classifier.js";
 import type { StickerSender } from "../src/sender.js";
 import type { StickerStore } from "../src/store.js";
 import { createStickerTools } from "../src/tools.js";
@@ -86,6 +86,28 @@ describe("sticker agent tools", () => {
     expect(deps.classifier.classify).toHaveBeenCalled();
     expect(deps.store.save).toHaveBeenCalledWith(expect.objectContaining({ scopeKey: "global", category: "meme", mediaType: "image/png" }));
     expect(result).toMatchObject({ ok: true, status: "created", id: "a".repeat(64) });
+  });
+
+  it("sticker_steal rejects images the classifier judges not to be stickers", async () => {
+    const deps = createDeps();
+    vi.mocked(deps.classifier.classify).mockResolvedValue({ notSticker: true, tags: [] });
+    const result = await execute(deps.tools.sticker_steal!, { asset_id: "a".repeat(32), category: "笑死" });
+    expect(deps.classifier.classify).toHaveBeenCalled();
+    expect(deps.store.save).not.toHaveBeenCalled();
+    expect(result).toEqual({ ok: false, error: "not_sticker" });
+  });
+
+  it("sticker_steal keeps an explicit category after the sticker check", async () => {
+    const deps = createDeps();
+    await execute(deps.tools.sticker_steal!, { asset_id: "a".repeat(32), category: "笑死" });
+    expect(deps.classifier.classify).toHaveBeenCalled();
+    expect(deps.store.save).toHaveBeenCalledWith(expect.objectContaining({ category: "笑死" }));
+  });
+
+  it("parses the not-sticker answer in plain and tag modes", () => {
+    expect(parseClassification("非表情包", false)).toEqual({ notSticker: true, tags: [] });
+    expect(parseClassification('{"category":"非表情包","tags":["截图"]}', true)).toEqual({ notSticker: true, tags: [] });
+    expect(parseClassification("笑死", false)).toEqual({ category: "笑死", tags: [] });
   });
 
   it("sticker_steal auto-tags the classified category in tag mode", async () => {
