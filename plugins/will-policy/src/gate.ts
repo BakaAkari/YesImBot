@@ -11,6 +11,8 @@ export interface GateVerdict {
   readonly openQuestion: boolean;
   readonly interest: 0 | 1 | 2 | 3;
   readonly complete: boolean;
+  /** A funny or absurd moment a sticker, "草" or "？" could answer. Missing in the reply means false. */
+  readonly reactable: boolean;
   readonly mood: Mood;
   readonly focusMessageId: string;
 }
@@ -43,6 +45,7 @@ others: 最近的消息是否明确是别人之间的你来我往，与该成员
 openQuestion: 是否有面向全群的提问，而且还没人回答。反问、感叹、自问自答不算。
 interest: 0-3，最近的话题与该成员兴趣的贴合度。看实际在聊什么，不看字面是否出现某个词。0 无关，1 沾边，2 相关，3 正中兴趣。只有表情、图片、一两个字的短句、斗图刷屏时，没有可接的内容，最多给 1。
 complete: 最后说话的人意思是否已经说完。话说一半、明显还在连发、刚发了"等下""我说个事"、只抛出一个还没展开的开头（"大工程""有个事"）时为 false。
+reactable: 最近有没有一个好笑、离谱、让人想随口回一句"草""？""哈哈哈"或丢一张表情的瞬间：玩梗、出糗、离谱发言、斗图、晒好玩的图。随口回一个反应不突兀时为 true。认真讨论、求助、低落、争吵时为 false。
 mood: 现场气氛，取 嗨 / 闲 / 认真 / 低落 / 冲突 之一。熟人互损和玩梗是 嗨，不是 冲突。
 focusMessageId: 最值得接的一条消息的 id（# 后面的值）；没有就填最后一条真人消息的 id。
 </fields>
@@ -53,7 +56,7 @@ focusMessageId: 最值得接的一条消息的 id（# 后面的值）；没有�
 [-40s] #a1 阿强(111): 有人用过 4090 跑 70b 吗
 [-38s] #a2 阿强(111): 显存够不够
 </history>
-<output>{"addressed":false,"others":false,"openQuestion":true,"interest":3,"complete":true,"mood":"认真","focusMessageId":"a2"}</output>
+<output>{"addressed":false,"others":false,"openQuestion":true,"interest":3,"complete":true,"reactable":false,"mood":"认真","focusMessageId":"a2"}</output>
 </example>
 <example>
 <history>
@@ -61,7 +64,7 @@ focusMessageId: 最值得接的一条消息的 id（# 后面的值）；没有�
 [-25s] #b2 老王(333): 哪个
 [-20s] #b3 小李(222): 就那个渲染的
 </history>
-<output>{"addressed":false,"others":true,"openQuestion":false,"interest":1,"complete":true,"mood":"闲","focusMessageId":"b3"}</output>
+<output>{"addressed":false,"others":true,"openQuestion":false,"interest":1,"complete":true,"reactable":false,"mood":"闲","focusMessageId":"b3"}</output>
 </example>
 <example>
 <history>
@@ -69,7 +72,7 @@ focusMessageId: 最值得接的一条消息的 id（# 后面的值）；没有�
 [-12s] #c1 阿杰(444): 米塔你也想要啥
 [-10s] #c2 阿杰(444): 说清楚
 </history>
-<output>{"addressed":true,"others":false,"openQuestion":false,"interest":1,"complete":true,"mood":"闲","focusMessageId":"c2"}</output>
+<output>{"addressed":true,"others":false,"openQuestion":false,"interest":1,"complete":true,"reactable":false,"mood":"闲","focusMessageId":"c2"}</output>
 </example>
 <example>
 <history>
@@ -77,7 +80,7 @@ focusMessageId: 最值得接的一条消息的 id（# 后面的值）；没有�
 [-15s] #e1 小周(666): 米塔又在乱说
 [-12s] #e2 老王(333): 别理它，它是 bot
 </history>
-<output>{"addressed":false,"others":true,"openQuestion":false,"interest":1,"complete":true,"mood":"嗨","focusMessageId":"e2"}</output>
+<output>{"addressed":false,"others":true,"openQuestion":false,"interest":1,"complete":true,"reactable":false,"mood":"嗨","focusMessageId":"e2"}</output>
 </example>
 <example>
 <history>
@@ -86,7 +89,7 @@ focusMessageId: 最值得接的一条消息的 id（# 后面的值）；没有�
 [-30s] #f3 阿梅(777): 去年底的，换了两次了
 [-20s] #f4 阿曼(888): 那正常，那批都这样
 </history>
-<output>{"addressed":false,"others":true,"openQuestion":false,"interest":2,"complete":true,"mood":"认真","focusMessageId":"f4"}</output>
+<output>{"addressed":false,"others":true,"openQuestion":false,"interest":2,"complete":true,"reactable":false,"mood":"认真","focusMessageId":"f4"}</output>
 </example>
 <example>
 <history>
@@ -95,14 +98,22 @@ focusMessageId: 最值得接的一条消息的 id（# 后面的值）；没有�
 [-20s] #g3 小柚(999): [图片]
 [-12s] #g4 阿拉(123): 草
 </history>
-<output>{"addressed":false,"others":false,"openQuestion":false,"interest":0,"complete":true,"mood":"嗨","focusMessageId":"g4"}</output>
+<output>{"addressed":false,"others":false,"openQuestion":false,"interest":0,"complete":true,"reactable":true,"mood":"嗨","focusMessageId":"g4"}</output>
+</example>
+<example>
+<history>
+[-25s] #h1 阿飞(321): 我刚把工程文件覆盖了
+[-20s] #h2 阿飞(321): 三天白干
+[-12s] #h3 小罗(654): 哈哈哈哈哈哈哈
+</history>
+<output>{"addressed":false,"others":false,"openQuestion":false,"interest":1,"complete":true,"reactable":true,"mood":"嗨","focusMessageId":"h2"}</output>
 </example>
 <example>
 <history>
 [-8s] #d1 大鹏(555): 我跟你们讲个事
 [-6s] #d2 大鹏(555): 今天早上
 </history>
-<output>{"addressed":false,"others":false,"openQuestion":false,"interest":0,"complete":false,"mood":"闲","focusMessageId":"d2"}</output>
+<output>{"addressed":false,"others":false,"openQuestion":false,"interest":0,"complete":false,"reactable":false,"mood":"闲","focusMessageId":"d2"}</output>
 </example>
 </examples>`;
 
@@ -150,6 +161,7 @@ export function parseVerdict(text: string): GateVerdict | undefined {
     openQuestion: value.openQuestion as boolean,
     interest,
     complete: value.complete as boolean,
+    reactable: value.reactable === true,
     mood: value.mood as Mood,
     focusMessageId: value.focusMessageId,
   };

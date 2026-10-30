@@ -26,10 +26,22 @@ function recentlyDeclined(context: RulingContext, config: PolicySemanticConfig):
   return context.lastDeclinedAt !== undefined && context.now - context.lastDeclinedAt < config.cooldownMs;
 }
 
-/** Big groups: stay near shareCap of human traffic. Small groups: never out-talk the most active human. */
-function shareReached(context: RulingContext, config: PolicySemanticConfig): boolean {
+/** Big groups: stay near the cap of human traffic. Small groups: never out-talk the most active human. */
+function shareReached(context: RulingContext, cap: number): boolean {
   const { human, self, topHuman } = context.share;
-  return self >= Math.max(1, Math.min(config.shareCap * human, topHuman));
+  return self >= Math.max(1, Math.min(cap * human, topHuman));
+}
+
+/**
+ * A light reaction (a sticker, "草", "？") to a funny or absurd moment. It has its own, looser
+ * share cap, since a reaction weighs less than joining the topic, but cooldown and declines still apply.
+ */
+function reaction(verdict: GateVerdict, context: RulingContext, config: PolicySemanticConfig, otherwise: SpeakRuling): SpeakRuling {
+  if (!verdict.reactable || verdict.mood === "冲突" || verdict.mood === "低落") return otherwise;
+  if (inCooldown(context, config)) return { speak: false, reason: "cooldown" };
+  if (recentlyDeclined(context, config)) return { speak: false, reason: "declined" };
+  if (shareReached(context, config.reactShareCap)) return { speak: false, reason: "react_share_cap" };
+  return { speak: true, reason: "react" };
 }
 
 /** When the gate fails, the willingness fallback may still speak, but only within cooldown and share. */
@@ -37,7 +49,7 @@ export function fallbackRule(fallbackPending: boolean, context: RulingContext, c
   if (!fallbackPending) return { speak: false, reason: "gate_failed" };
   if (inCooldown(context, config)) return { speak: false, reason: "gate_failed_cooldown" };
   if (recentlyDeclined(context, config)) return { speak: false, reason: "gate_failed_declined" };
-  if (shareReached(context, config)) return { speak: false, reason: "gate_failed_share_cap" };
+  if (shareReached(context, config.shareCap)) return { speak: false, reason: "gate_failed_share_cap" };
   return { speak: true, reason: "gate_failed_fallback" };
 }
 
@@ -45,7 +57,7 @@ export function fallbackRule(fallbackPending: boolean, context: RulingContext, c
 export function rule(verdict: GateVerdict, context: RulingContext, config: PolicySemanticConfig): SpeakRuling {
   if (verdict.addressed) return { speak: true, reason: "addressed" };
   if (!verdict.complete) return { speak: false, reason: "incomplete" };
-  if (verdict.others) return { speak: false, reason: "others" };
+  if (verdict.others) return reaction(verdict, context, config, { speak: false, reason: "others" });
   if (inCooldown(context, config)) return { speak: false, reason: "cooldown" };
   if (verdict.openQuestion) {
     if (context.focusAgeMs >= config.questionGraceMs) return { speak: true, reason: "open_question" };
@@ -54,8 +66,8 @@ export function rule(verdict: GateVerdict, context: RulingContext, config: Polic
   if (verdict.interest >= 2) {
     if (verdict.mood === "冲突") return { speak: false, reason: "conflict" };
     if (recentlyDeclined(context, config)) return { speak: false, reason: "declined" };
-    if (shareReached(context, config)) return { speak: false, reason: "share_cap" };
+    if (shareReached(context, config.shareCap)) return reaction(verdict, context, config, { speak: false, reason: "share_cap" });
     return { speak: true, reason: "interest" };
   }
-  return { speak: false, reason: "not_interesting" };
+  return reaction(verdict, context, config, { speak: false, reason: "not_interesting" });
 }

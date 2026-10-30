@@ -28,7 +28,17 @@ function message(elements: unknown[], options: { user?: string; channelType?: 0 
 const text = (content: string) => ({ type: "text", attrs: { content }, children: [] });
 
 function verdict(overrides: Partial<GateVerdict> = {}): GateVerdict {
-  return { addressed: false, others: false, openQuestion: false, interest: 0, complete: true, mood: "闲", focusMessageId: "m-1", ...overrides };
+  return {
+    addressed: false,
+    others: false,
+    openQuestion: false,
+    interest: 0,
+    complete: true,
+    reactable: false,
+    mood: "闲",
+    focusMessageId: "m-1",
+    ...overrides,
+  };
 }
 
 function engine(config: Partial<PolicySemanticConfig>, generate: GateGenerate) {
@@ -52,6 +62,12 @@ describe("parseVerdict", () => {
     expect(parseVerdict(JSON.stringify({ ...verdict(), interest: 5 }))).toBeUndefined();
     expect(parseVerdict(JSON.stringify({ ...verdict(), mood: "开心" }))).toBeUndefined();
     expect(parseVerdict("not json")).toBeUndefined();
+  });
+
+  it("treats a missing reactable as false", () => {
+    const { reactable: _, ...older } = verdict({ interest: 1 });
+    expect(parseVerdict(JSON.stringify(older))).toEqual(verdict({ interest: 1 }));
+    expect(parseVerdict(JSON.stringify(verdict({ reactable: true })))?.reactable).toBe(true);
   });
 });
 
@@ -89,6 +105,21 @@ describe("rule", () => {
     expect(rule(verdict({ addressed: true }), declined, config).speak).toBe(true);
     expect(rule(verdict({ interest: 3 }), { ...base, lastDeclinedAt: base.now - config.cooldownMs }, config).speak).toBe(true);
     expect(fallbackRule(true, declined, config).reason).toBe("gate_failed_declined");
+  });
+
+  it("reacts to funny moments, even in others' banter, within its own looser share cap", () => {
+    expect(rule(verdict({ reactable: true }), base, config)).toEqual({ speak: true, reason: "react" });
+    expect(rule(verdict({ reactable: true, others: true, mood: "嗨" }), base, config).reason).toBe("react");
+    expect(rule(verdict({ reactable: true, mood: "冲突" }), base, config).reason).toBe("not_interesting");
+    expect(rule(verdict({ reactable: true, others: true, mood: "低落" }), base, config).reason).toBe("others");
+    expect(rule(verdict({ reactable: true, complete: false }), base, config).reason).toBe("incomplete");
+    expect(rule(verdict({ reactable: true }), { ...base, lastSelfAt: base.now - 10_000 }, config).reason).toBe("cooldown");
+    expect(rule(verdict({ reactable: true }), { ...base, lastDeclinedAt: base.now - 10_000 }, config).reason).toBe("declined");
+    // Over the topic share (2%) but under the reaction share (4%).
+    const busy = { ...base, share: { human: 300, self: 8, topHuman: 50 } };
+    expect(rule(verdict({ interest: 3 }), busy, config).reason).toBe("share_cap");
+    expect(rule(verdict({ interest: 3, reactable: true }), busy, config).reason).toBe("react");
+    expect(rule(verdict({ reactable: true }), { ...base, share: { human: 300, self: 12, topHuman: 50 } }, config).reason).toBe("react_share_cap");
   });
 });
 
@@ -318,6 +349,14 @@ describe("wake hint", () => {
     expect(hint).toContain("认真");
     expect(hint).toContain("直接结束本轮");
     expect(wakeHint({ speak: true, reason: "gate_failed_fallback" }, undefined, undefined)).toContain("兜底");
+  });
+
+  it("asks for a reaction instead of an opinion unless the bot was addressed", () => {
+    const react = wakeHint({ speak: true, reason: "react" }, verdict({ mood: "嗨", reactable: true }), undefined);
+    expect(react).toContain("sticker_search");
+    expect(react).toContain("不发表看法");
+    expect(wakeHint({ speak: true, reason: "interest" }, verdict(), undefined)).toContain("不要发表主观观点");
+    expect(wakeHint({ speak: true, reason: "addressed" }, verdict(), undefined)).not.toContain("主观观点");
   });
 
   it("is passed to the runtime on wake", async () => {

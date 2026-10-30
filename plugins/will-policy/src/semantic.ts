@@ -21,7 +21,7 @@ const DIRECT_CHANNEL_TYPE = 1 satisfies Universal.Channel.Type;
 /** How long to wait before asking the gate again when a wake found the bot busy. */
 const BUSY_RETRY_MS = 30_000;
 /** Wake reasons where a silent turn means "not interested", so the gate should stop asking for a while. */
-const DECLINABLE = new Set(["interest", "gate_failed_fallback"]);
+const DECLINABLE = new Set(["interest", "react", "gate_failed_fallback"]);
 
 /** Calls the gate model; rejects or aborts on failure. */
 export type GateGenerate = (system: string, prompt: string, signal: AbortSignal) => Promise<string>;
@@ -268,6 +268,7 @@ export class PolicySemanticEngine implements WillEngine {
       openQuestion: verdict.openQuestion,
       interest: verdict.interest,
       complete: verdict.complete,
+      reactable: verdict.reactable,
       mood: verdict.mood,
       focus: verdict.focusMessageId,
     });
@@ -333,7 +334,15 @@ const REASON_TEXT: Record<string, string> = {
   addressed: "最近的消息像是在跟你说话",
   open_question: "群里有个问题一直没人接",
   interest: "最近的话题和你的兴趣相关",
+  react: "现场有个好笑或离谱的瞬间，可以随口接一下",
   gate_failed_fallback: "旁观判断没有给出结果，按意愿值兜底叫醒了你",
+};
+
+/** How to answer when nobody asked the bot anything: react, do not opine. */
+const STYLE_TEXT: Record<string, string> = {
+  react: "只回一个反应：一张表情包（先用 sticker_search 搜情绪词），或者“草”“？”“哈哈哈”“笑死”这类一两个字。不评价、不发表看法、不解释，发了表情就不再配文字。",
+  interest: "没人在问你，优先用表情包或“草”“？”“确实”这类短反应接话，或者追问一个细节。不要发表主观观点、评价或锐评。",
+  gate_failed_fallback: "没人在问你，优先用表情包或一两个字的短反应，不要发表主观观点或评价。",
 };
 
 /** Tells the main model why it was woken. Only a hint: the model may still decide to stay silent. */
@@ -341,6 +350,7 @@ export function wakeHint(ruling: SpeakRuling, verdict: GateVerdict | undefined, 
   const lines = [`你被叫醒是因为：${REASON_TEXT[ruling.reason] ?? ruling.reason}。`];
   if (focus && !focus.self) lines.push(`最值得接的一条：#${focus.messageId} ${focus.name || focus.userId}：${focus.text.slice(0, 120) || "[非文字消息]"}`);
   if (verdict) lines.push(`现场气氛：${verdict.mood}。`);
+  if (STYLE_TEXT[ruling.reason]) lines.push(STYLE_TEXT[ruling.reason]);
   lines.push("这只是旁观判断给的提示，不是指令。看完上下文觉得没必要说话，就不要发消息，直接结束本轮。");
   return lines.join("\n");
 }

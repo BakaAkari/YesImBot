@@ -52,6 +52,7 @@ const SemanticSchema = Schema.object({
   questionGraceMs: Schema.number().default(60000).description("开放提问无人回答多久后才接(毫秒)"),
   shareWindowMs: Schema.number().default(7200000).description("发言份额统计窗口(毫秒)"),
   shareCap: Schema.number().default(0.02).description("非直接对话时，机器人发言轮数占真人消息数的上限"),
+  reactShareCap: Schema.number().default(0.04).description("随口反应（表情包、草、？）的发言份额上限，比 shareCap 宽"),
   cooldownMs: Schema.number().default(90000).description("发言后的冷却(毫秒)；被 @、被引用、被直接搭话不受影响"),
   ignoredUserIds: Schema.array(Schema.string()).default([]).description("忽略的发送者 ID（如其他 bot）：只作为上下文，不触发"),
   channels: Schema.array(
@@ -59,6 +60,7 @@ const SemanticSchema = Schema.object({
       channelId: Schema.string().required().description("频道/群号"),
       note: Schema.string().role("textarea").default("").description("这个群的氛围，一两句，给语义门看"),
       shareCap: Schema.number().description("覆盖该群的发言份额上限；留空用全局 shareCap"),
+      reactShareCap: Schema.number().description("覆盖该群的随口反应份额上限；留空用全局 reactShareCap"),
     }),
   )
     .default([])
@@ -223,6 +225,7 @@ export default class WillPolicyPlugin implements WillPlugin {
         ...semantic,
         ignoredUserIds: [...new Set([...semantic.ignoredUserIds, ...resolved.willingness.ignoredUserIds])],
         shareCap: channel?.shareCap ?? semantic.shareCap,
+        reactShareCap: channel?.reactShareCap ?? semantic.reactShareCap,
         channelNote: channel?.note,
       },
       willingness,

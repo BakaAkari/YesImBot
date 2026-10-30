@@ -44,6 +44,8 @@ export interface SemanticChannelConfig {
   readonly note: string;
   /** Overrides `shareCap` for this group. */
   readonly shareCap?: number;
+  /** Overrides `reactShareCap` for this group. */
+  readonly reactShareCap?: number;
 }
 
 export interface PolicySemanticConfig {
@@ -61,6 +63,8 @@ export interface PolicySemanticConfig {
   readonly questionGraceMs: number;
   readonly shareWindowMs: number;
   readonly shareCap: number;
+  /** Share cap for light reactions (stickers, "草", "？"); looser than `shareCap`. */
+  readonly reactShareCap: number;
   readonly cooldownMs: number;
   readonly ignoredUserIds: string[];
   readonly channels: SemanticChannelConfig[];
@@ -122,6 +126,7 @@ export function defaultSemanticConfig(): PolicySemanticConfig {
     questionGraceMs: 60_000,
     shareWindowMs: 2 * 60 * 60 * 1_000,
     shareCap: 0.02,
+    reactShareCap: 0.04,
     cooldownMs: 90_000,
     ignoredUserIds: [],
     channels: [],
