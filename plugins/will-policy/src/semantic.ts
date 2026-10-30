@@ -340,11 +340,14 @@ const REASON_TEXT: Record<string, string> = {
   gate_failed_fallback: "旁观判断没有给出结果，按意愿值兜底叫醒了你",
 };
 
-/** A direction, not a script, for when nobody asked the bot anything: lean toward reacting over opining. */
+/** When nobody asked the bot anything: reactions from a preferred list first, no commentary; the pick is the bot's. */
 const STYLE_TEXT: Record<string, string> = {
-  react: "这种时候群友一般是随手给个反应，而不是发表看法。接不接、用什么形式、发什么内容，你看现场自己决定。",
-  interest: "没人在问你。比起发表观点和评价，群友更常用反应式的方式接话；具体怎么接、接不接由你自己决定。",
-  gate_failed_fallback: "没人在问你。比起发表观点和评价，群友更常用反应式的方式接话；具体怎么接、接不接由你自己决定。",
+  react:
+    "没人在问你。首选回应是一张表情包，或者“草”“？”“笑死”“哈哈哈”这类不带观点的短反应，从里面挑最贴现场的。不要点评、不要吐槽、不要发表主观看法。都不合适就用同类的一两个字，或者不说话。",
+  interest:
+    "没人在问你。首选回应是一张表情包，或者“草”“？”“笑死”“哈哈哈”这类不带观点的短反应，从里面挑最贴现场的。不要点评、不要吐槽、不要发表主观看法。都不合适就用同类的一两个字，或者不说话。",
+  gate_failed_fallback:
+    "没人在问你。首选回应是一张表情包，或者“草”“？”“笑死”“哈哈哈”这类不带观点的短反应，从里面挑最贴现场的。不要点评、不要吐槽、不要发表主观看法。都不合适就用同类的一两个字，或者不说话。",
 };
 
 /** Tells the main model why it was woken. Only a hint: the model may still decide to stay silent. */
