@@ -394,9 +394,11 @@ describe("wake hint", () => {
     const react = wakeHint({ speak: true, reason: "react" }, verdict({ mood: "嗨", reactable: true }), undefined);
     expect(react).toContain("表情包");
     expect(react).toContain("笑死");
-    expect(react).toContain("换着用");
-    expect(react).toContain("不要点评");
-    expect(wakeHint({ speak: true, reason: "interest" }, verdict(), undefined)).toContain("不要发表主观看法");
+    expect(react).toContain("不要连着用");
+    expect(react).toContain("调侃");
+    expect(react).not.toContain("“哈哈哈”");
+    expect(react).toContain("不要展开点评");
+    expect(wakeHint({ speak: true, reason: "interest" }, verdict(), undefined)).toContain("不要长篇发表主观看法");
     expect(wakeHint({ speak: true, reason: "addressed" }, verdict(), undefined)).not.toContain("点评");
   });
 
