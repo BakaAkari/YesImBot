@@ -34,8 +34,8 @@ export default class GlobalBrainPlugin {
     scheduledShare: Schema.object({
       channelId: Schema.string().default("").description("定时转发的目标群号；留空关闭"),
       idleMinutes: Schema.number().min(1).default(20).description("目标群安静多久后才转发(分钟)"),
-      minGapMinutes: Schema.number().min(1).default(120).description("两次转发之间至少间隔(分钟)"),
-      dailyLimit: Schema.number().min(0).default(4).description("每天最多转发几条"),
+      minGapMinutes: Schema.number().min(0).default(120).description("两次转发之间至少间隔(分钟)；0 = 不限"),
+      dailyLimit: Schema.number().min(0).default(4).description("每天最多转发几条；0 = 不限"),
       freshHours: Schema.number().min(1).default(72).description("只转发多少小时内存入的内容"),
       startHour: Schema.number().min(0).max(24).default(9).description("每天几点开始可以转发"),
       endHour: Schema.number().min(0).max(24).default(24).description("每天几点之后不再转发"),
@@ -118,9 +118,9 @@ export default class GlobalBrainPlugin {
     const hour = new Date(now).getHours();
     if (hour < share.startHour || hour >= share.endHour) return undefined;
     if (now - this.targetActiveAt < share.idleMinutes * 60_000) return undefined;
-    if ((await store.forwardOffers(target.scope, now - share.minGapMinutes * 60_000)) > 0) return undefined;
+    if (share.minGapMinutes > 0 && (await store.forwardOffers(target.scope, now - share.minGapMinutes * 60_000)) > 0) return undefined;
     const dayStart = new Date(now).setHours(0, 0, 0, 0);
-    if ((await store.forwardOffers(target.scope, dayStart)) >= share.dailyLimit) return undefined;
+    if (share.dailyLimit > 0 && (await store.forwardOffers(target.scope, dayStart)) >= share.dailyLimit) return undefined;
     const thread = await store.forwardCandidate(target.scope, now - share.freshHours * 3_600_000);
     if (!thread) return undefined;
     await store.markForwardOffered(thread.id, target.scope);

@@ -173,4 +173,32 @@ describe("GlobalBrainPlugin", () => {
       expect((await plugin.offerForward(Date.now() + 150 * 60_000))?.content).toBe("第二张");
     });
   });
+
+  it("treats a zero gap and zero daily limit as unlimited", async () => {
+    await withTempDir(async (baseDir) => {
+      const { ctx, plugins } = createContext(baseDir);
+      const scheduledShare = {
+        channelId: "group-b",
+        idleMinutes: 20,
+        minGapMinutes: 0,
+        dailyLimit: 0,
+        freshHours: 72,
+        startHour: 0,
+        endHour: 24,
+        checkIntervalMinutes: 5,
+      };
+      const plugin = new GlobalBrainPlugin(
+        ctx as never,
+        { storageDir: baseDir, maxDigestThreads: 5, maxDigestReplies: 5, maxDigestContentLength: 80, maxBlobBytes: 1024, scheduledShare } as never,
+      );
+      await plugin.start();
+      const source = await plugins[0]!.setup(channelScope("group-a"), { selfId: "bot-a" });
+      const deposit = (await getTools(source!)).brain_deposit!;
+      await plugins[0]!.setup(channelScope("group-b"), { selfId: "bot-a" });
+      await deposit.execute({ kind: "share", content: "第一张", tags: [] } as never, {} as never);
+      expect((await plugin.offerForward(Date.now() + 25 * 60_000))?.content).toBe("第一张");
+      await deposit.execute({ kind: "share", content: "第二张", tags: [] } as never, {} as never);
+      expect((await plugin.offerForward(Date.now() + 50 * 60_000))?.content).toBe("第二张");
+    });
+  });
 });
